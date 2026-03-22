@@ -22,11 +22,16 @@ export async function POST(req: NextRequest) {
     const questions: Question[] = Array.isArray(quiz.questions) ? quiz.questions : []
     const answerKey: Record<string, string> = quiz.answer_key || {}
 
+    // Normalize answers: support both array [{questionId, answer}] and object {q1: "A"} formats
+    const answersMap: Record<string, string> = Array.isArray(answers)
+      ? Object.fromEntries(answers.map((a: { questionId: string; answer: string }) => [a.questionId, a.answer]))
+      : (answers || {})
+
     let correct = 0
     const feedback: string[] = []
 
     for (const q of questions) {
-      const userAnswer = (answers[q.id] || '').toString().trim().toLowerCase()
+      const userAnswer = (answersMap[q.id] || '').toString().trim().toLowerCase()
       const correctAnswer = (answerKey[q.id] || q.correct || '').toString().trim().toLowerCase()
 
       if (q.type === 'multiple_choice') {
