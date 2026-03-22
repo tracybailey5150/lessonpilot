@@ -175,7 +175,7 @@ export default function NewCoursePage() {
               </div>
             ))}
 
-            <label style={s.label} style={{ marginTop: '8px' }}>Quiz Frequency</label>
+            <label style={{ ...s.label, marginTop: '8px' }}>Quiz Frequency</label>
             <select value={form.quizMode} onChange={e => update('quizMode', e.target.value)} style={s.select}>
               <option value="after_each_lesson">After each lesson (recommended)</option>
               <option value="after_each_unit">After each unit</option>

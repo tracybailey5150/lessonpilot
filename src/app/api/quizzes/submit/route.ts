@@ -67,21 +67,12 @@ export async function POST(req: NextRequest) {
 
     // Add to review queue if failed
     if (!passed) {
-      await supabase.from('review_queue').upsert({
+      await supabase.from('review_queue').insert({
         user_id: userId,
         course_id: courseId,
         lesson_id: lessonId,
         weakness_score: score,
         retry_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      }, { onConflict: 'user_id,lesson_id' }).catch(() => {
-        // review_queue may not have unique constraint — just insert
-        supabase.from('review_queue').insert({
-          user_id: userId,
-          course_id: courseId,
-          lesson_id: lessonId,
-          weakness_score: score,
-          retry_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        })
       })
     }
 
