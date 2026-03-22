@@ -138,7 +138,7 @@ export default function LessonPage() {
 
       <header style={s.header}>
         <div style={s.breadcrumb}>
-          <Link href="/dashboard" style={{ color: '#64748B', textDecoration: 'none' }}>✈️</Link>
+          <Link href="/dashboard" style={{ color: '#64748B', textDecoration: 'none' }}>🎓</Link>
           <span>/</span>
           <Link href={`/courses/${courseId}`} style={{ color: '#64748B', textDecoration: 'none' }}>Course</Link>
           <span>/</span>

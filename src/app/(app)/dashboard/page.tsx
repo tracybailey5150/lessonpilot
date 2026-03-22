@@ -102,7 +102,7 @@ export default function DashboardPage() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <Link href="/dashboard" style={s.logo as React.CSSProperties}>✈️ LessonPilot</Link>
+        <Link href="/dashboard" style={s.logo as React.CSSProperties}>🎓 LessonPilot</Link>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <span style={{ color: '#64748B', fontSize: '13px' }}>{user?.email}</span>
           <button onClick={() => { supabase.auth.signOut(); router.push('/login') }} style={s.logoutBtn}>Sign Out</button>

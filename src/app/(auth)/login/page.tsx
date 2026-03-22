@@ -80,8 +80,8 @@ export default function LoginPage() {
     },
     btn: {
       width: '100%',
-      background: '#6366F1',
-      color: '#fff',
+      background: '#38BDF8',
+      color: '#070C18',
       border: 'none',
       borderRadius: '8px',
       padding: '14px',
@@ -106,7 +106,7 @@ export default function LoginPage() {
       marginTop: '24px',
     },
     link: {
-      color: '#6366F1',
+      color: '#38BDF8',
       textDecoration: 'none',
     },
   }
@@ -114,7 +114,7 @@ export default function LoginPage() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <div style={s.logo}>✈️ LessonPilot</div>
+        <div style={s.logo}>🎓 LessonPilot</div>
         <div style={s.subtitle}>Sign in to continue learning</div>
 
         {error && <div style={s.error}>{error}</div>}

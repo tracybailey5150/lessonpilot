@@ -91,7 +91,7 @@ export default function NewCoursePage() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>✈️ LessonPilot</Link>
+        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
         <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>← Back to Dashboard</Link>
       </header>
 

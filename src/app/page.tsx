@@ -35,8 +35,8 @@ export default function LandingPage() {
       fontSize: '14px',
     } as React.CSSProperties,
     btnPrimary: {
-      background: '#6366F1',
-      color: '#fff',
+      background: '#38BDF8',
+      color: '#070C18',
       padding: '10px 20px',
       borderRadius: '8px',
       textDecoration: 'none',
@@ -93,8 +93,8 @@ export default function LandingPage() {
       flexWrap: 'wrap' as const,
     },
     ctaBig: {
-      background: '#6366F1',
-      color: '#fff',
+      background: '#38BDF8',
+      color: '#070C18',
       padding: '16px 32px',
       borderRadius: '10px',
       textDecoration: 'none',
@@ -230,7 +230,7 @@ export default function LandingPage() {
     <div style={styles.page}>
       {/* Nav */}
       <nav style={styles.nav}>
-        <a href="/" style={styles.logo}>✈️ LessonPilot</a>
+        <a href="/" style={styles.logo}>🎓 LessonPilot</a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
           <a href="#pricing" style={styles.navLink}>Pricing</a>
@@ -352,7 +352,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer style={styles.footer}>
-        <div style={{ marginBottom: '12px' }}>✈️ <strong>LessonPilot.ai</strong></div>
+        <div style={{ marginBottom: '12px' }}>🎓 <strong>LessonPilot.ai</strong></div>
         <div>AI-powered teaching that adapts to you.</div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '24px', justifyContent: 'center' }}>
           <Link href="/login" style={{ color: '#64748B', textDecoration: 'none' }}>Login</Link>

@@ -62,17 +62,17 @@ export default function SignupPage() {
     subtitle: { textAlign: 'center' as const, color: '#64748B', fontSize: '14px', marginBottom: '32px' },
     label: { display: 'block', color: '#94A3B8', fontSize: '13px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
     input: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '20px' },
-    btn: { width: '100%', background: '#6366F1', color: '#fff', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '8px' } as React.CSSProperties,
+    btn: { width: '100%', background: '#38BDF8', color: '#070C18', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', marginTop: '8px' } as React.CSSProperties,
     error: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#F87171', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' } as React.CSSProperties,
     success: { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ADE80', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' } as React.CSSProperties,
     footer: { textAlign: 'center' as const, color: '#64748B', fontSize: '14px', marginTop: '24px' },
-    link: { color: '#6366F1', textDecoration: 'none' },
+    link: { color: '#38BDF8', textDecoration: 'none' },
   }
 
   return (
     <div style={s.page}>
       <div style={s.card}>
-        <div style={s.logo}>✈️ LessonPilot</div>
+        <div style={s.logo}>🎓 LessonPilot</div>
         <div style={s.subtitle}>Create your free account</div>
 
         {error && <div style={s.error}>{error}</div>}

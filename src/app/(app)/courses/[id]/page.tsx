@@ -115,7 +115,7 @@ export default function CoursePage() {
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>✈️ LessonPilot</Link>
+        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
         <div style={{ display: 'flex', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>Dashboard</Link>
           <Link href={`/courses/${courseId}/progress`} style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>Progress</Link>

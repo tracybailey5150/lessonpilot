@@ -120,7 +120,7 @@ export default function QuizPage() {
     return (
       <div style={s.page}>
         <header style={s.header}>
-          <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontWeight: 700 }}>✈️ LessonPilot</Link>
+          <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontWeight: 700 }}>🎓 LessonPilot</Link>
         </header>
         <main style={s.main}>
           <div style={s.card}>
