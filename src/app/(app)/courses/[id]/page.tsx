@@ -140,6 +140,13 @@ export default function CoursePage() {
             </div>
           </div>
 
+          {/* Tab bar */}
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '28px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+            <span style={{ padding: '8px 18px', borderRadius: '7px', fontSize: '14px', fontWeight: 600, color: '#F1F5F9', background: '#0C1220' }}>Lessons</span>
+            <Link href={`/courses/${courseId}/resources`} style={{ padding: '8px 18px', borderRadius: '7px', fontSize: '14px', fontWeight: 600, color: '#64748B', textDecoration: 'none' }}>Resources</Link>
+            <Link href={`/courses/${courseId}/progress`} style={{ padding: '8px 18px', borderRadius: '7px', fontSize: '14px', fontWeight: 600, color: '#64748B', textDecoration: 'none' }}>Progress</Link>
+          </div>
+
           <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>Curriculum</h2>
 
           {units.length === 0 && (

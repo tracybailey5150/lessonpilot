@@ -5,6 +5,14 @@ import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+interface Resource {
+  id: string
+  type: string
+  name: string
+  url: string | null
+  file_size: number | null
+}
+
 interface Lesson {
   id: string
   title: string
@@ -32,6 +40,7 @@ export default function LessonPage() {
   const [showTerms, setShowTerms] = useState(false)
   const [showRecap, setShowRecap] = useState(false)
   const [completing, setCompleting] = useState(false)
+  const [lessonResources, setLessonResources] = useState<Resource[]>([])
 
   useEffect(() => {
     async function load() {
@@ -60,6 +69,19 @@ export default function LessonPage() {
         setGenerating(false)
       } else {
         setLesson(lessonData)
+      }
+
+      // Fetch lesson resources
+      if (userRec) {
+        const token = session.access_token
+        const resResp = await fetch(`/api/resources?courseId=${courseId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (resResp.ok) {
+          const resData = await resResp.json()
+          const filtered = (resData.resources || []).filter((r: Resource & { lesson_id?: string }) => r.lesson_id === lessonId)
+          setLessonResources(filtered)
+        }
       }
 
       // Mark as in_progress
@@ -191,6 +213,30 @@ export default function LessonPage() {
               <span>{showRecap ? '▲' : '▼'}</span>
             </div>
             {showRecap && <div style={s.expandBody}>{lesson.recap}</div>}
+          </div>
+        )}
+
+        {/* Lesson Resources widget */}
+        {lessonResources.length > 0 && (
+          <div style={{ marginTop: '32px' }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#F1F5F9' }}>📎 Lesson Resources</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {lessonResources.map(r => {
+                const icons: Record<string, string> = { pdf: '📄', audio: '🎵', video: '🎬', zip: '🗜️', youtube: '▶️', url: '🔗', file: '📎' }
+                const icon = icons[r.type] || '📎'
+                return (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{icon}</span>
+                    <span style={{ fontSize: '13px', color: '#E2E8F0', flex: 1 }}>{r.name}</span>
+                    {r.url && (
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: '#38BDF8', fontSize: '12px', textDecoration: 'none', flexShrink: 0 }}>
+                        {r.type === 'youtube' ? '▶ Watch' : '→ Open'}
+                      </a>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </main>
