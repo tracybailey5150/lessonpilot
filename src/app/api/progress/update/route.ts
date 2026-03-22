@@ -8,10 +8,21 @@ export async function POST(req: NextRequest) {
     const { userId, lessonId, courseId, status, score } = await req.json()
     const supabase = createServiceClient()
 
+    // Resolve internal user ID from supabase_auth_id
+    let internalUserId = userId
+    const { data: userRec } = await supabase
+      .from('users')
+      .select('id')
+      .eq('supabase_auth_id', userId)
+      .single()
+    if (userRec) {
+      internalUserId = userRec.id
+    }
+
     const { data, error } = await supabase
       .from('progress')
       .upsert({
-        user_id: userId,
+        user_id: internalUserId,
         course_id: courseId,
         lesson_id: lessonId,
         status,
