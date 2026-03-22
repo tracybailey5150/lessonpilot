@@ -264,7 +264,7 @@ export default function LandingPage() {
             { icon: '📄', title: 'Upload Any Material', desc: 'PDFs, documents, or paste raw text. LessonPilot transforms it into a structured curriculum instantly.' },
             { icon: '🎯', title: 'Choose Your Style', desc: 'Plain English, Deep Dive, Step-by-Step, or Exam Prep. Teaching adapts to how you learn best.' },
             { icon: '📊', title: 'Track Mastery', desc: 'Progress rings, weak area detection, and spaced repetition. Know exactly what you know.' },
-            { icon: '🤖', title: 'AI Teaching Agent', desc: 'GPT-4o powered lessons that explain, check understanding, and adapt when you struggle.' },
+            { icon: '🤖', title: 'AI Teaching Agent', desc: 'Bailey AI powered lessons that explain, check understanding, and adapt when you struggle.' },
             { icon: '🧪', title: 'Smart Quizzes', desc: 'Auto-generated quizzes for every lesson. Multiple choice and short answer with instant feedback.' },
             { icon: '🔄', title: 'Review Weak Areas', desc: 'Automatic review queue for topics you missed. Re-explains with simpler language and new examples.' },
           ].map((f, i) => (
@@ -286,7 +286,7 @@ export default function LandingPage() {
         <div style={styles.stepRow}>
           {[
             { num: '1', icon: '📤', title: 'Upload Your Material', desc: 'Paste text, upload a PDF, or drop in any study material. We parse and structure it.' },
-            { num: '2', icon: '🗺️', title: 'AI Builds Your Curriculum', desc: 'GPT-4o generates a structured lesson plan with units, objectives, and difficulty levels.' },
+            { num: '2', icon: '🗺️', title: 'AI Builds Your Curriculum', desc: 'Bailey AI generates a structured lesson plan with units, objectives, and difficulty levels.' },
             { num: '3', icon: '🎓', title: 'Learn & Track Mastery', desc: 'Go lesson by lesson. Quiz yourself. Get reteaught on weak areas. Watch mastery grow.' },
           ].map((s, i) => (
             <div key={i} style={styles.step}>
