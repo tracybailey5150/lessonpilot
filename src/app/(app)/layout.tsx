@@ -19,7 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
+    { href: '/courses', label: 'My Courses', icon: '📚' },
     { href: '/courses/new', label: 'New Course', icon: '➕' },
+    { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
   const s = {

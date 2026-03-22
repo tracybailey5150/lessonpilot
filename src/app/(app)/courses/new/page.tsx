@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -10,6 +10,9 @@ export default function NewCoursePage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null)
+  const [fileLoading, setFileLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     title: '',
@@ -23,6 +26,40 @@ export default function NewCoursePage() {
   })
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
+
+  const handleFileUpload = async (file: File) => {
+    setFileLoading(true)
+    setError('')
+    try {
+      const fileName = file.name.toLowerCase()
+      if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+        // Read TXT client-side
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve(e.target?.result as string)
+          reader.onerror = reject
+          reader.readAsText(file)
+        })
+        update('rawText', (form.rawText ? form.rawText + '\n\n' : '') + text)
+      } else {
+        // Send to API for PDF/DOC extraction
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/parse-document', { method: 'POST', body: fd })
+        const data = await res.json()
+        if (data.text) {
+          update('rawText', (form.rawText ? form.rawText + '\n\n' : '') + data.text)
+        } else {
+          setError(data.error || 'Could not extract text from file')
+        }
+      }
+      setUploadedFile({ name: file.name, size: file.size })
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setFileLoading(false)
+    }
+  }
 
   const handleSubmit = async () => {
     setLoading(true)
