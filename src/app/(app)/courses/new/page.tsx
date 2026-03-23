@@ -228,7 +228,7 @@ export default function NewCoursePage() {
 
             {loading && (
               <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', marginTop: '16px' }}>
-                GPT-4o is designing your curriculum. This takes 15–30 seconds...
+                AI is designing your curriculum. This takes 15–30 seconds...
               </div>
             )}
           </>

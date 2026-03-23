@@ -140,7 +140,7 @@ export default function LessonPage() {
           {generating ? 'Generating your lesson...' : 'Loading...'}
         </div>
         <div style={{ color: '#64748B', fontSize: '14px' }}>
-          {generating ? 'GPT-4o is preparing a personalized lesson just for you' : ''}
+          {generating ? 'AI is preparing a personalized lesson just for you' : ''}
         </div>
       </div>
     </div>
