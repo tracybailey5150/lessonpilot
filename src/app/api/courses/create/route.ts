@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Generate curriculum with GPT-4o
     const truncatedText = rawText.slice(0, 8000)
     const curriculumRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4.1",
       messages: [
         {
           role: 'system',

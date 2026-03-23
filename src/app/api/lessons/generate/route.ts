@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     // Generate lesson content
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4.1",
       messages: [
         {
           role: 'system',

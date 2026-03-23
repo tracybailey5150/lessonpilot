@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const content = `${lesson.title}\n${lesson.objective}\n${lesson.content || ''}\n${lesson.examples || ''}`
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4o-mini",
       messages: [
         {
           role: 'system',
