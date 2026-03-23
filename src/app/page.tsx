@@ -332,7 +332,7 @@ export default function LandingPage() {
                 <li key={i} style={styles.featureItem}>✓ {f}</li>
               ))}
             </ul>
-            <Link href="/signup" style={{ ...styles.btnPrimary, display: 'block', textAlign: 'center' }}>Start Pro Free</Link>
+            <Link href="/signup" style={{ ...styles.btnPrimary, display: 'block', textAlign: 'center' }}>Start 7-Day Free Trial</Link>
           </div>
 
           {/* Team */}

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       customer_email: userEmail,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 14,
+        trial_period_days: 7,
         metadata: { userId },
       },
       success_url: `${appUrl}/dashboard?upgraded=true`,
