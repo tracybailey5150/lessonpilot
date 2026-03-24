@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+
+const FREE_COURSE_LIMIT = 3
 
 export default function NewCoursePage() {
   const router = useRouter()
@@ -13,6 +15,9 @@ export default function NewCoursePage() {
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null)
   const [fileLoading, setFileLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [courseCount, setCourseCount] = useState<number | null>(null)
+  const [isPaid, setIsPaid] = useState(false)
+  const [gateLoading, setGateLoading] = useState(true)
 
   const [form, setForm] = useState({
     title: '',
@@ -27,13 +32,41 @@ export default function NewCoursePage() {
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
 
+  useEffect(() => {
+    async function checkGate() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/login'); return }
+
+      const { data: userRec } = await supabase
+        .from('users')
+        .select('id, subscription_status')
+        .eq('supabase_auth_id', session.user.id)
+        .single()
+
+      if (!userRec) { setGateLoading(false); return }
+
+      const paid = ['active', 'trialing'].includes(userRec.subscription_status ?? '')
+      setIsPaid(paid)
+
+      if (!paid) {
+        const { count } = await supabase
+          .from('courses')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userRec.id)
+        setCourseCount(count ?? 0)
+      }
+
+      setGateLoading(false)
+    }
+    checkGate()
+  }, [router])
+
   const handleFileUpload = async (file: File) => {
     setFileLoading(true)
     setError('')
     try {
       const fileName = file.name.toLowerCase()
       if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
-        // Read TXT client-side
         const text = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = e => resolve(e.target?.result as string)
@@ -42,7 +75,6 @@ export default function NewCoursePage() {
         })
         update('rawText', (form.rawText ? form.rawText + '\n\n' : '') + text)
       } else {
-        // Send to API for PDF/DOC extraction
         const fd = new FormData()
         fd.append('file', file)
         const res = await fetch('/api/parse-document', { method: 'POST', body: fd })
@@ -125,6 +157,61 @@ export default function NewCoursePage() {
     { value: 'coach-mode', label: '🏋️ Coach Mode', desc: 'Motivating, challenge-based, push through hard topics' },
   ]
 
+  if (gateLoading) return (
+    <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#64748B' }}>Loading...</div>
+    </div>
+  )
+
+  // Free tier gate
+  if (!isPaid && courseCount !== null && courseCount >= FREE_COURSE_LIMIT) {
+    return (
+      <div style={s.page}>
+        <header style={s.header}>
+          <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
+          <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>← Back to Dashboard</Link>
+        </header>
+        <main style={{ ...s.main, textAlign: 'center' }}>
+          <div style={{ fontSize: '56px', marginBottom: '24px' }}>🔒</div>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px' }}>Free Plan Limit Reached</h1>
+          <p style={{ color: '#64748B', fontSize: '16px', marginBottom: '8px' }}>
+            You&apos;ve used all <strong style={{ color: '#F1F5F9' }}>{FREE_COURSE_LIMIT} free courses</strong>.
+          </p>
+          <p style={{ color: '#64748B', fontSize: '15px', marginBottom: '36px' }}>
+            Upgrade to Pro for unlimited courses, full AI, and progress analytics.
+          </p>
+
+          <div style={{
+            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)',
+            borderRadius: '16px', padding: '32px', maxWidth: '420px', margin: '0 auto 32px',
+          }}>
+            <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px' }}>Pro Plan</div>
+            <div style={{ fontSize: '36px', fontWeight: 800, color: '#6366F1', marginBottom: '16px' }}>$19<span style={{ fontSize: '16px', color: '#64748B', fontWeight: 400 }}>/mo</span></div>
+            <ul style={{ textAlign: 'left', color: '#94A3B8', fontSize: '14px', lineHeight: 2, listStyle: 'none', padding: 0, marginBottom: '24px' }}>
+              <li>✓ Unlimited courses</li>
+              <li>✓ Full AI lesson engine</li>
+              <li>✓ Progress analytics</li>
+              <li>✓ PDF &amp; document upload</li>
+              <li>✓ Priority support</li>
+            </ul>
+            <Link href="/settings" style={{
+              display: 'block', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+              color: '#fff', padding: '14px', borderRadius: '10px', fontWeight: 700,
+              fontSize: '16px', textDecoration: 'none', textAlign: 'center',
+              boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
+            }}>
+              Upgrade to Pro — 7 days free →
+            </Link>
+          </div>
+
+          <Link href="/dashboard" style={{ color: '#475569', fontSize: '14px', textDecoration: 'none' }}>
+            ← Go back to my courses
+          </Link>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div style={s.page}>
       <header style={s.header}>
@@ -133,6 +220,22 @@ export default function NewCoursePage() {
       </header>
 
       <main style={s.main}>
+        {/* Free plan indicator */}
+        {!isPaid && courseCount !== null && (
+          <div style={{
+            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: '10px', padding: '10px 16px', marginBottom: '28px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+          }}>
+            <span style={{ fontSize: '13px', color: '#FCD34D' }}>
+              Free plan: {courseCount} of {FREE_COURSE_LIMIT} courses used
+            </span>
+            <Link href="/settings" style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600, textDecoration: 'none' }}>
+              Upgrade →
+            </Link>
+          </div>
+        )}
+
         {/* Step indicator */}
         <div style={s.stepRow}>
           {[1, 2, 3].map((n, i) => (
