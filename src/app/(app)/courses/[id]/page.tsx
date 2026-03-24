@@ -41,6 +41,8 @@ export default function CoursePage() {
   const [progress, setProgress] = useState<Record<string, string>>({})
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<string | null>(null)
+  const [deletingLesson, setDeletingLesson] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -74,6 +76,17 @@ export default function CoursePage() {
     load()
   }, [courseId, router])
 
+  async function deleteLesson(lessonId: string) {
+    setDeletingLesson(lessonId)
+    await supabase.from('progress').delete().eq('lesson_id', lessonId)
+    const { error } = await supabase.from('lessons').delete().eq('id', lessonId)
+    if (!error) {
+      setUnits(prev => prev.map(u => ({ ...u, lessons: u.lessons.filter(l => l.id !== lessonId) })))
+      setConfirmDeleteLesson(null)
+    }
+    setDeletingLesson(null)
+  }
+
   const totalLessons = units.reduce((a, u) => a + u.lessons.length, 0)
   const completedLessons = Object.values(progress).filter(s => s === 'completed').length
   const progressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
@@ -103,7 +116,7 @@ export default function CoursePage() {
     unitCard: { background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', marginBottom: '16px', overflow: 'hidden' } as React.CSSProperties,
     unitHeader: { padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } as React.CSSProperties,
     unitTitle: { fontWeight: 700, fontSize: '15px' } as React.CSSProperties,
-    lessonRow: { padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: '#F1F5F9', cursor: 'pointer' } as React.CSSProperties,
+    lessonRow: { padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: '12px', color: '#F1F5F9' } as React.CSSProperties,
     statsCard: { background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '24px' } as React.CSSProperties,
     statRow: { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' } as React.CSSProperties,
     btn: { background: '#6366F1', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'block', textAlign: 'center' as const, marginTop: '16px' } as React.CSSProperties,
@@ -115,7 +128,7 @@ export default function CoursePage() {
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
+        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>LessonPilot</Link>
         <div style={{ display: 'flex', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>Dashboard</Link>
           <Link href={`/courses/${courseId}/progress`} style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>Progress</Link>
@@ -140,7 +153,6 @@ export default function CoursePage() {
             </div>
           </div>
 
-          {/* Tab bar */}
           <div style={{ display: 'flex', gap: '4px', marginBottom: '28px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
             <span style={{ padding: '8px 18px', borderRadius: '7px', fontSize: '14px', fontWeight: 600, color: '#F1F5F9', background: '#0C1220' }}>Lessons</span>
             <Link href={`/courses/${courseId}/resources`} style={{ padding: '8px 18px', borderRadius: '7px', fontSize: '14px', fontWeight: 600, color: '#64748B', textDecoration: 'none' }}>Resources</Link>
@@ -165,20 +177,51 @@ export default function CoursePage() {
                 <span style={{ color: '#64748B', fontSize: '12px' }}>{unit.lessons.length} lessons</span>
               </div>
               {unit.lessons.map(lesson => (
-                <Link
-                  key={lesson.id}
-                  href={`/courses/${courseId}/lesson/${lesson.id}`}
-                  style={styles.lessonRow}
-                >
-                  <span style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '20px' }}>
-                    {statusIcon(lesson.id)}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{lesson.title}</div>
-                    {lesson.objective && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '2px' }}>{lesson.objective}</div>}
-                  </div>
-                  <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
-                </Link>
+                <div key={lesson.id}>
+                  {confirmDeleteLesson === lesson.id ? (
+                    <div style={{ ...styles.lessonRow, background: 'rgba(239,68,68,0.06)', borderLeft: '3px solid rgba(239,68,68,0.5)', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '13px', color: '#F87171' }}>Delete &ldquo;{lesson.title}&rdquo;?</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => deleteLesson(lesson.id)}
+                          disabled={deletingLesson === lesson.id}
+                          style={{ background: '#EF4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          {deletingLesson === lesson.id ? '...' : 'Yes, delete'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteLesson(null)}
+                          style={{ background: 'rgba(255,255,255,0.07)', color: '#94A3B8', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={styles.lessonRow}>
+                      <span style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '20px' }}>
+                        {statusIcon(lesson.id)}
+                      </span>
+                      <Link
+                        href={`/courses/${courseId}/lesson/${lesson.id}`}
+                        style={{ flex: 1, textDecoration: 'none', color: '#F1F5F9' }}
+                      >
+                        <div style={{ fontSize: '14px', fontWeight: 600 }}>{lesson.title}</div>
+                        {lesson.objective && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '2px' }}>{lesson.objective}</div>}
+                      </Link>
+                      <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
+                      <button
+                        onClick={() => setConfirmDeleteLesson(lesson.id)}
+                        title="Delete lesson"
+                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '4px 6px', fontSize: '14px', lineHeight: 1, borderRadius: '4px', flexShrink: 0 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           ))}
@@ -205,7 +248,6 @@ export default function CoursePage() {
               <span style={{ color: '#6366F1', fontWeight: 700 }}>{progressPct}%</span>
             </div>
 
-            {/* Find first incomplete lesson */}
             {(() => {
               for (const unit of units) {
                 for (const lesson of unit.lessons) {
@@ -218,7 +260,7 @@ export default function CoursePage() {
                   }
                 }
               }
-              return <div style={{ color: '#4ADE80', textAlign: 'center', marginTop: '16px', fontWeight: 600 }}>🎉 Course Complete!</div>
+              return <div style={{ color: '#4ADE80', textAlign: 'center', marginTop: '16px', fontWeight: 600 }}>Course Complete!</div>
             })()}
 
             <Link href={`/courses/${courseId}/progress`} style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B' }}>
