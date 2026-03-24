@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'LessonPilot.ai — AI Teaching Platform',
+  title: 'LessonPilot.org — AI Teaching Platform',
   description: 'Upload what you need to learn. Get taught your way. AI-powered teaching that adapts to your style, pace, and goals.',
 }
 

@@ -352,14 +352,14 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer style={styles.footer}>
-        <div style={{ marginBottom: '12px' }}>🎓 <strong>LessonPilot.ai</strong></div>
+        <div style={{ marginBottom: '12px' }}>🎓 <strong>LessonPilot.org</strong></div>
         <div>AI-powered teaching that adapts to you.</div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '24px', justifyContent: 'center' }}>
           <Link href="/login" style={{ color: '#64748B', textDecoration: 'none' }}>Login</Link>
           <Link href="/signup" style={{ color: '#64748B', textDecoration: 'none' }}>Sign Up</Link>
           <a href="#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</a>
         </div>
-        <div style={{ marginTop: '24px', color: '#374151' }}>© 2026 LessonPilot.ai — All rights reserved</div>
+        <div style={{ marginTop: '24px', color: '#374151' }}>© 2026 LessonPilot.org — All rights reserved</div>
       </footer>
     </div>
   )
