@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { notifyNewSubscription } from '@/lib/email'
 
 function getSupabase() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -43,12 +44,18 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const userId = obj.subscription_data?.metadata?.userId || obj.metadata?.userId
+        const customerEmail = obj.customer_email || obj.customer_details?.email || ''
+        const amountTotal = obj.amount_total ? `$${(obj.amount_total / 100).toFixed(2)}/mo` : 'subscription'
+
         await supabase.from('users').update({
           subscription_status: 'active',
           stripe_customer_id: obj.customer,
           stripe_subscription_id: obj.subscription,
           updated_at: new Date().toISOString(),
         }).eq('id', userId)
+
+        // Notify Tracy
+        notifyNewSubscription('LessonPilot', customerEmail, 'Pro', amountTotal).catch(() => {})
         console.log('[LP] Activated subscription for user:', userId)
         break
       }
