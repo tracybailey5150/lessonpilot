@@ -20,6 +20,21 @@ interface CurriculumResult {
   units: UnitOutline[]
 }
 
+// Split text into ~500-token chunks with 50-token overlap (~4 chars per token)
+function chunkText(text: string, chunkTokens = 500, overlapTokens = 50): string[] {
+  const chunkSize = chunkTokens * 4
+  const overlapSize = overlapTokens * 4
+  const chunks: string[] = []
+  let start = 0
+  while (start < text.length) {
+    const end = Math.min(start + chunkSize, text.length)
+    chunks.push(text.slice(start, end).trim())
+    if (end === text.length) break
+    start += chunkSize - overlapSize
+  }
+  return chunks.filter(c => c.length > 50)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { title, subject, level, goal, teachingStyle, rawText, userId: supabaseAuthId } = await req.json()
@@ -33,7 +48,6 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!userRec) {
-      // Create user if not exists
       const { data: newUser, error: userErr } = await supabase
         .from('users')
         .insert({ supabase_auth_id: supabaseAuthId, email: '' })
@@ -88,7 +102,6 @@ ${truncatedText}`
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       curriculum = JSON.parse(jsonMatch ? jsonMatch[0] : content)
     } catch {
-      // Fallback curriculum
       curriculum = {
         units: [{
           title: `Introduction to ${title}`,
@@ -125,29 +138,28 @@ ${truncatedText}`
       }
     }
 
-    // Generate embeddings for text chunks (background)
+    // Embed all chunks with overlap — process in batches to avoid rate limits
     if (sourceDoc) {
-      const chunkSize = 1000
-      const chunks: string[] = []
-      for (let i = 0; i < rawText.length; i += chunkSize) {
-        chunks.push(rawText.slice(i, i + chunkSize))
-      }
-
-      // Process first 10 chunks (rate limit consideration)
-      const toProcess = chunks.slice(0, 10)
-      for (let i = 0; i < toProcess.length; i++) {
-        try {
-          const embedding = await generateEmbedding(toProcess[i])
-          await supabase.from('document_chunks').insert({
-            document_id: sourceDoc.id,
-            course_id: course.id,
-            content: toProcess[i],
-            chunk_index: i,
-            embedding: JSON.stringify(embedding),
+      const chunks = chunkText(rawText)
+      const BATCH_SIZE = 20
+      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+        const batch = chunks.slice(i, i + BATCH_SIZE)
+        await Promise.all(
+          batch.map(async (chunk, j) => {
+            try {
+              const embedding = await generateEmbedding(chunk)
+              await supabase.from('document_chunks').insert({
+                document_id: sourceDoc.id,
+                course_id: course.id,
+                content: chunk,
+                chunk_index: i + j,
+                embedding: JSON.stringify(embedding),
+              })
+            } catch {
+              // Skip failed chunks — lesson generation falls back to raw text
+            }
           })
-        } catch {
-          // Skip failed embeddings
-        }
+        )
       }
     }
 
