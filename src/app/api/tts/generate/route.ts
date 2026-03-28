@@ -33,11 +33,15 @@ export async function POST(req: NextRequest) {
     }
 
     const audioBuffer = await res.arrayBuffer()
-    const base64 = Buffer.from(audioBuffer).toString('base64')
 
-    return NextResponse.json({
-      audio: `data:audio/mpeg;base64,${base64}`,
-      voiceId,
+    // Return as actual audio/mpeg — works on all browsers including iOS Safari
+    return new NextResponse(audioBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': String(audioBuffer.byteLength),
+        'Cache-Control': 'public, max-age=3600',
+      },
     })
   } catch (e) {
     console.error('TTS error:', e)
