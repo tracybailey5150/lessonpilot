@@ -104,7 +104,8 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   const [voiceEnabled, setVoiceEnabled] = useState(false)
 
   const synthRef = useRef<SpeechSynthesis | null>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
   const sectionsRef = useRef(buildSections(lesson))
   const currentIdxRef = useRef(0)
   const speedRef = useRef(1)
@@ -272,24 +273,27 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   // Set up speech recognition
   useEffect(() => {
     if (!voiceEnabled) return
-    const SpeechRecognition = (window as unknown as { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition }).SpeechRecognition
-      || (window as unknown as { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition
-    if (!SpeechRecognition) return
+    if (typeof window === 'undefined') return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any
+    const SR = win.SpeechRecognition || win.webkitSpeechRecognition
+    if (!SR) return
 
-    const recognition = new SpeechRecognition()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition: any = new SR()
     recognition.continuous = true
     recognition.interimResults = false
     recognition.lang = 'en-US'
     recognition.maxAlternatives = 1
 
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      const transcript = e.results[e.results.length - 1][0].transcript
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (e: any) => {
+      const transcript = e.results[e.results.length - 1][0].transcript as string
       const cmd = matchCommand(transcript)
       if (cmd) handleVoiceCommand(cmd, transcript)
     }
     recognition.onend = () => {
       setIsListening(false)
-      // Restart if drive mode still active
       if (!pausedRef.current) {
         try { recognition.start(); setIsListening(true) } catch {}
       }
