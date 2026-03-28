@@ -57,39 +57,40 @@ function buildSections(lesson: Lesson): { id: Section; label: string; text: stri
       ? Object.entries(lesson.key_terms).map(([k, v]) => `${k}: ${v}`)
       : []
 
-  return [
+  const items: { id: Section; label: string; text: string }[] = [
     {
-      id: 'intro',
+      id: 'intro' as Section,
       label: 'Introduction',
       text: `Welcome to ${lesson.title}. Your learning objective for this module is: ${lesson.objective}. Let's begin.`,
     },
     {
-      id: 'content',
+      id: 'content' as Section,
       label: 'Lesson',
       text: lesson.content || `This module covers ${lesson.title}.`,
     },
     {
-      id: 'examples',
+      id: 'examples' as Section,
       label: 'Examples',
       text: lesson.examples
         ? `Let's look at some real-world examples. ${lesson.examples}`
         : '',
     },
     {
-      id: 'terms',
+      id: 'terms' as Section,
       label: 'Key Terms',
       text: keyTermsArray.length > 0
         ? `Here are the key terms for this module. ${keyTermsArray.join('. ')}.`
         : '',
     },
     {
-      id: 'recap',
+      id: 'recap' as Section,
       label: 'Recap',
       text: lesson.recap
         ? `Let's recap what we covered. ${lesson.recap} That wraps up ${lesson.title}. You can say "quiz me" to test your knowledge, or "next lesson" to continue.`
         : `That wraps up ${lesson.title}. Say "quiz me" to test your knowledge, or "next lesson" to continue.`,
     },
-  ].filter(s => s.text.trim().length > 0)
+  ]
+  return items.filter(s => s.text.trim().length > 0)
 }
 
 export default function DriveMode({ lesson, courseId, onNavigate, onClose }: DriveModeProps) {
