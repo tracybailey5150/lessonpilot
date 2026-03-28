@@ -1,9 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+
+// ─── Audio Player ────────────────────────────────────────────────────────────
+function useAudioPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [speed, setSpeed] = useState(1)
+
+  const speak = useCallback((text: string, rate = 1) => {
+    window.speechSynthesis.cancel()
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.rate = rate; utt.pitch = 1; utt.volume = 1
+    const voices = window.speechSynthesis.getVoices()
+    const preferred = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang === 'en-US') || voices[0]
+    if (preferred) utt.voice = preferred
+    utt.onstart = () => { setIsPlaying(true); setIsPaused(false) }
+    utt.onend = () => { setIsPlaying(false); setIsPaused(false) }
+    utt.onpause = () => setIsPaused(true)
+    utt.onresume = () => setIsPaused(false)
+    utt.onerror = () => { setIsPlaying(false); setIsPaused(false) }
+    window.speechSynthesis.speak(utt)
+  }, [])
+
+  const pause = useCallback(() => { window.speechSynthesis.pause(); setIsPaused(true) }, [])
+  const resume = useCallback(() => { window.speechSynthesis.resume(); setIsPaused(false) }, [])
+  const stop = useCallback(() => { window.speechSynthesis.cancel(); setIsPlaying(false); setIsPaused(false) }, [])
+
+  return { isPlaying, isPaused, speed, speak, pause, resume, stop, setSpeed }
+}
 
 interface Question {
   id: string
@@ -33,6 +61,15 @@ export default function QuizPage() {
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ score: number; feedback: string[]; passed: boolean } | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+
+  const audio = useAudioPlayer()
+  useEffect(() => { return () => window.speechSynthesis?.cancel() }, [])
+
+  const readQuestion = useCallback((q: Question | undefined) => {
+    if (!q) return
+    const text = `Question: ${q.question}. ${q.options ? q.options.join('. ') : ''}`
+    audio.speak(text, audio.speed)
+  }, [audio])
 
   useEffect(() => {
     async function load() {
@@ -96,6 +133,7 @@ export default function QuizPage() {
     btnRow: { display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' } as React.CSSProperties,
     btn: { background: '#6366F1', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' } as React.CSSProperties,
     btnGhost: { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', borderRadius: '8px', padding: '12px 24px', fontSize: '14px', cursor: 'pointer' } as React.CSSProperties,
+    btnAudio: (active: boolean) => ({ background: active ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.08)', border: `1px solid ${active ? 'rgba(251,191,36,0.6)' : 'rgba(251,191,36,0.2)'}`, color: '#FBBF24', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' } as React.CSSProperties),
     scoreCircle: { width: '120px', height: '120px', border: '4px solid #6366F1', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px', fontWeight: 800 } as React.CSSProperties,
   }
 
@@ -169,7 +207,19 @@ export default function QuizPage() {
     <div style={s.page}>
       <header style={s.header}>
         <Link href={`/courses/${courseId}/lesson/${lessonId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Back to Lesson</Link>
-        <span style={{ color: '#64748B', fontSize: '13px' }}>Quiz · {questions.length} questions</span>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            style={s.btnAudio(audio.isPlaying)}
+            onClick={() => {
+              if (audio.isPlaying && !audio.isPaused) audio.pause()
+              else if (audio.isPaused) audio.resume()
+              else readQuestion(currentQuestion)
+            }}
+          >
+            {audio.isPlaying && !audio.isPaused ? '⏸ Pause' : audio.isPaused ? '▶ Resume' : '🔊 Read Question'}
+          </button>
+          <span style={{ color: '#64748B', fontSize: '13px' }}>Quiz · {questions.length} questions</span>
+        </div>
       </header>
 
       <main style={s.main}>
