@@ -4,30 +4,44 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import VoiceSelector, { DEFAULT_VOICE_ID } from '@/components/VoiceSelector'
 
 const FREE_COURSE_LIMIT = 3
+
+interface ResourceItem {
+  id: string
+  title: string
+  url?: string
+  type: string
+  description?: string
+  text?: string
+  selected: boolean
+}
 
 export default function NewCoursePage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null)
-  const [fileLoading, setFileLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [gateLoading, setGateLoading] = useState(true)
   const [courseCount, setCourseCount] = useState<number | null>(null)
   const [isPaid, setIsPaid] = useState(false)
-  const [gateLoading, setGateLoading] = useState(true)
+  const [resourceTab, setResourceTab] = useState<'upload' | 'url' | 'ai'>('ai')
+  const [resources, setResources] = useState<ResourceItem[]>([])
+  const [urlInput, setUrlInput] = useState('')
+  const [fetchingUrl, setFetchingUrl] = useState(false)
+  const [researchLoading, setResearchLoading] = useState(false)
+  const [fileLoading, setFileLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     title: '',
     subject: '',
-    level: 'beginner',
+    level: 'intermediate',
     goal: '',
-    rawText: '',
     teachingStyle: 'step-by-step',
-    pace: 'normal',
     quizMode: 'after_each_lesson',
+    voiceId: DEFAULT_VOICE_ID,
   })
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
@@ -36,61 +50,99 @@ export default function NewCoursePage() {
     async function checkGate() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-
-      const { data: userRec } = await supabase
-        .from('users')
-        .select('id, subscription_status')
-        .eq('supabase_auth_id', session.user.id)
-        .single()
-
+      const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', session.user.id).single()
       if (!userRec) { setGateLoading(false); return }
-
       const paid = ['active', 'trialing'].includes(userRec.subscription_status ?? '')
       setIsPaid(paid)
-
       if (!paid) {
-        const { count } = await supabase
-          .from('courses')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userRec.id)
+        const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).eq('user_id', userRec.id)
         setCourseCount(count ?? 0)
       }
-
       setGateLoading(false)
     }
     checkGate()
   }, [router])
+
+  const selectedResources = resources.filter(r => r.selected)
+  const combinedText = selectedResources.map(r => r.text || '').filter(Boolean).join('\n\n')
+
+  const addResource = (r: Omit<ResourceItem, 'id' | 'selected'>) => {
+    setResources(prev => [...prev, { ...r, id: Math.random().toString(36).slice(2), selected: true }])
+  }
+
+  const toggleResource = (id: string) => setResources(prev => prev.map(r => r.id === id ? { ...r, selected: !r.selected } : r))
+  const removeResource = (id: string) => setResources(prev => prev.filter(r => r.id !== id))
+
+  const handleAiResearch = async () => {
+    if (!form.subject && !form.title) return
+    setResearchLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/resources/ai-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: form.title || form.subject, subject: form.subject, level: form.level }),
+      })
+      const data = await res.json()
+      if (data.resources) {
+        data.resources.forEach((r: { title: string; url?: string; type: string; description?: string }) => {
+          addResource({ title: r.title, url: r.url, type: r.type, description: r.description, text: '' })
+        })
+      }
+      if (data.seedText) {
+        addResource({ title: `AI Knowledge Base: ${form.title || form.subject}`, type: 'knowledge-base', text: data.seedText, description: 'AI-generated comprehensive overview' })
+      }
+    } catch (e) {
+      setError(String(e))
+    }
+    setResearchLoading(false)
+  }
+
+  const handleFetchUrl = async () => {
+    if (!urlInput.trim()) return
+    setFetchingUrl(true)
+    setError('')
+    try {
+      const res = await fetch('/api/resources/fetch-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) { setError(data.error); setFetchingUrl(false); return }
+      addResource({ title: data.title, url: data.url, type: data.type || 'article', text: data.text, description: `Fetched from ${data.url}` })
+      setUrlInput('')
+    } catch (e) {
+      setError(String(e))
+    }
+    setFetchingUrl(false)
+  }
 
   const handleFileUpload = async (file: File) => {
     setFileLoading(true)
     setError('')
     try {
       const fileName = file.name.toLowerCase()
+      let text = ''
       if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
-        const text = await new Promise<string>((resolve, reject) => {
+        text = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = e => resolve(e.target?.result as string)
           reader.onerror = reject
           reader.readAsText(file)
         })
-        update('rawText', (form.rawText ? form.rawText + '\n\n' : '') + text)
       } else {
         const fd = new FormData()
         fd.append('file', file)
         const res = await fetch('/api/parse-document', { method: 'POST', body: fd })
         const data = await res.json()
-        if (data.text) {
-          update('rawText', (form.rawText ? form.rawText + '\n\n' : '') + data.text)
-        } else {
-          setError(data.error || 'Could not extract text from file')
-        }
+        text = data.text || ''
       }
-      setUploadedFile({ name: file.name, size: file.size })
+      addResource({ title: file.name, type: 'file', text, description: `Uploaded file (${(file.size / 1024).toFixed(0)} KB)` })
     } catch (e) {
       setError(String(e))
-    } finally {
-      setFileLoading(false)
     }
+    setFileLoading(false)
   }
 
   const handleSubmit = async () => {
@@ -99,11 +151,11 @@ export default function NewCoursePage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
-
+      const rawText = combinedText || `Course on ${form.title || form.subject}`
       const res = await fetch('/api/courses/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, userId: session.user.id }),
+        body: JSON.stringify({ ...form, rawText, userId: session.user.id }),
       })
       const data = await res.json()
       if (data.courseId) {
@@ -118,222 +170,238 @@ export default function NewCoursePage() {
     }
   }
 
+  const ff = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
   const s = {
-    page: { background: '#070C18', minHeight: '100vh', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: '#F1F5F9' } as React.CSSProperties,
+    page: { background: '#070C18', minHeight: '100vh', fontFamily: ff, color: '#F1F5F9' } as React.CSSProperties,
     header: { background: '#0C1220', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } as React.CSSProperties,
-    main: { maxWidth: '680px', margin: '0 auto', padding: '60px 32px' } as React.CSSProperties,
-    stepRow: { display: 'flex', gap: '8px', marginBottom: '40px', alignItems: 'center' } as React.CSSProperties,
+    main: { maxWidth: '720px', margin: '0 auto', padding: '40px 24px 80px' } as React.CSSProperties,
+    stepRow: { display: 'flex', gap: '6px', marginBottom: '36px', alignItems: 'center' } as React.CSSProperties,
     stepBadge: (active: boolean, done: boolean) => ({
-      width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '13px', fontWeight: 700,
+      width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', fontWeight: 700, flexShrink: 0,
       background: done ? '#6366F1' : active ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)',
       color: done || active ? '#6366F1' : '#64748B',
       border: active ? '2px solid #6366F1' : '2px solid transparent',
     } as React.CSSProperties),
-    stepLine: { flex: 1, height: '2px', background: 'rgba(255,255,255,0.07)' } as React.CSSProperties,
-    title: { fontSize: '28px', fontWeight: 700, marginBottom: '8px' } as React.CSSProperties,
-    subtitle: { color: '#64748B', marginBottom: '32px' } as React.CSSProperties,
-    label: { display: 'block', color: '#94A3B8', fontSize: '13px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
-    input: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '20px' },
-    select: { width: '100%', background: '#0C1220', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '20px' },
-    textarea: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '20px', resize: 'vertical' as const, minHeight: '200px' },
-    btnRow: { display: 'flex', gap: '12px', justifyContent: 'space-between', marginTop: '8px' } as React.CSSProperties,
+    stepLabel: (active: boolean) => ({ fontSize: '11px', color: active ? '#F1F5F9' : '#475569', fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' as const }),
+    stepLine: { flex: 1, height: '2px', background: 'rgba(255,255,255,0.07)', marginBottom: '16px' } as React.CSSProperties,
+    title: { fontSize: '26px', fontWeight: 800, marginBottom: '6px' } as React.CSSProperties,
+    subtitle: { color: '#64748B', marginBottom: '28px', fontSize: '14px' } as React.CSSProperties,
+    label: { display: 'block', color: '#94A3B8', fontSize: '12px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
+    input: { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '11px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '18px' },
+    select: { width: '100%', background: '#0C1220', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '11px 14px', color: '#F1F5F9', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, marginBottom: '18px' },
     btn: { background: '#6366F1', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', flex: 1 } as React.CSSProperties,
     btnBack: { background: 'transparent', color: '#64748B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 24px', fontSize: '15px', cursor: 'pointer' } as React.CSSProperties,
+    btnRow: { display: 'flex', gap: '12px', justifyContent: 'space-between', marginTop: '24px' } as React.CSSProperties,
+    error: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#F87171', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' } as React.CSSProperties,
+    tab: (active: boolean) => ({ padding: '8px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', background: active ? '#6366F1' : 'transparent', color: active ? '#fff' : '#64748B', border: 'none' } as React.CSSProperties),
+    tabBar: { display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '4px', marginBottom: '20px' } as React.CSSProperties,
+    resCard: { display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', marginBottom: '8px' } as React.CSSProperties,
     styleOption: (selected: boolean) => ({
       background: selected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
       border: selected ? '1px solid #6366F1' : '1px solid rgba(255,255,255,0.07)',
-      borderRadius: '10px', padding: '14px', cursor: 'pointer', marginBottom: '12px',
+      borderRadius: '10px', padding: '13px 16px', cursor: 'pointer', marginBottom: '10px',
       color: selected ? '#F1F5F9' : '#64748B',
     } as React.CSSProperties),
-    error: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#F87171', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' } as React.CSSProperties,
   }
 
-  const teachingStyles = [
-    { value: 'step-by-step', label: '🪜 Step-by-Step', desc: 'Break it down piece by piece, building on each concept' },
-    { value: 'plain-english', label: '💬 Plain English', desc: 'Simple language, no jargon, real-world examples' },
-    { value: 'deep-dive', label: '🔬 Deep Dive', desc: 'Thorough explanations with the why and how' },
-    { value: 'exam-prep', label: '📝 Exam Prep', desc: 'Focus on key facts, patterns, and test-taking strategies' },
-    { value: 'coach-mode', label: '🏋️ Coach Mode', desc: 'Motivating, challenge-based, push through hard topics' },
-  ]
+  const STEPS = ['Course Info', 'Resources', 'Style & Voice', 'Build']
 
-  if (gateLoading) return (
-    <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#64748B' }}>Loading...</div>
-    </div>
-  )
+  if (gateLoading) return <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#64748B' }}>Loading...</div></div>
 
-  // Free tier gate
   if (!isPaid && courseCount !== null && courseCount >= FREE_COURSE_LIMIT) {
     return (
       <div style={s.page}>
-        <header style={s.header}>
-          <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
-          <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>← Back to Dashboard</Link>
-        </header>
+        <header style={s.header}><Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontWeight: 700 }}>🎓 LessonPilot</Link></header>
         <main style={{ ...s.main, textAlign: 'center' }}>
           <div style={{ fontSize: '56px', marginBottom: '24px' }}>🔒</div>
           <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px' }}>Free Plan Limit Reached</h1>
-          <p style={{ color: '#64748B', fontSize: '16px', marginBottom: '8px' }}>
-            You&apos;ve used all <strong style={{ color: '#F1F5F9' }}>{FREE_COURSE_LIMIT} free courses</strong>.
-          </p>
-          <p style={{ color: '#64748B', fontSize: '15px', marginBottom: '36px' }}>
-            Upgrade to Pro for unlimited courses, full AI, and progress analytics.
-          </p>
-
-          <div style={{
-            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)',
-            borderRadius: '16px', padding: '32px', maxWidth: '420px', margin: '0 auto 32px',
-          }}>
-            <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px' }}>Pro Plan</div>
-            <div style={{ fontSize: '36px', fontWeight: 800, color: '#6366F1', marginBottom: '16px' }}>$19<span style={{ fontSize: '16px', color: '#64748B', fontWeight: 400 }}>/mo</span></div>
-            <ul style={{ textAlign: 'left', color: '#94A3B8', fontSize: '14px', lineHeight: 2, listStyle: 'none', padding: 0, marginBottom: '24px' }}>
-              <li>✓ Unlimited courses</li>
-              <li>✓ Full AI lesson engine</li>
-              <li>✓ Progress analytics</li>
-              <li>✓ PDF &amp; document upload</li>
-              <li>✓ Priority support</li>
-            </ul>
-            <Link href="/settings" style={{
-              display: 'block', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-              color: '#fff', padding: '14px', borderRadius: '10px', fontWeight: 700,
-              fontSize: '16px', textDecoration: 'none', textAlign: 'center',
-              boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
-            }}>
-              Upgrade to Pro — 7 days free →
-            </Link>
-          </div>
-
-          <Link href="/dashboard" style={{ color: '#475569', fontSize: '14px', textDecoration: 'none' }}>
-            ← Go back to my courses
-          </Link>
+          <p style={{ color: '#64748B', marginBottom: '32px' }}>You&apos;ve used all {FREE_COURSE_LIMIT} free courses. Upgrade to Pro for unlimited courses.</p>
+          <Link href="/settings" style={{ background: '#6366F1', color: '#fff', padding: '14px 32px', borderRadius: '10px', fontWeight: 700, textDecoration: 'none' }}>Upgrade to Pro →</Link>
         </main>
       </div>
     )
   }
 
+  const typeIcon = (type: string) => (({ 'youtube': '▶️', 'article': '📄', 'file': '📁', 'book': '📚', 'course': '🎓', 'paper': '📑', 'knowledge-base': '🧠', 'website': '🌐', 'video': '▶️' } as Record<string,string>)[type] || '🔗')
+
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '18px', fontWeight: 700 }}>🎓 LessonPilot</Link>
-        <Link href="/dashboard" style={{ color: '#64748B', fontSize: '14px', textDecoration: 'none' }}>← Back to Dashboard</Link>
+        <Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontSize: '16px', fontWeight: 700 }}>🎓 LessonPilot</Link>
+        <Link href="/dashboard" style={{ color: '#64748B', fontSize: '13px', textDecoration: 'none' }}>← Dashboard</Link>
       </header>
 
       <main style={s.main}>
-        {/* Free plan indicator */}
         {!isPaid && courseCount !== null && (
-          <div style={{
-            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: '10px', padding: '10px 16px', marginBottom: '28px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-          }}>
-            <span style={{ fontSize: '13px', color: '#FCD34D' }}>
-              Free plan: {courseCount} of {FREE_COURSE_LIMIT} courses used
-            </span>
-            <Link href="/settings" style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600, textDecoration: 'none' }}>
-              Upgrade →
-            </Link>
+          <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '10px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', color: '#FCD34D' }}>Free plan: {courseCount}/{FREE_COURSE_LIMIT} courses used</span>
+            <Link href="/settings" style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600, textDecoration: 'none' }}>Upgrade →</Link>
           </div>
         )}
 
-        {/* Step indicator */}
+        {/* Step indicators */}
         <div style={s.stepRow}>
-          {[1, 2, 3].map((n, i) => (
-            <>
-              <div key={`step-${n}`} style={s.stepBadge(step === n, step > n)}>{step > n ? '✓' : n}</div>
-              {i < 2 && <div key={`line-${n}`} style={s.stepLine} />}
-            </>
-          ))}
+          {STEPS.map((label, i) => {
+            const n = i + 1
+            return (
+              <><div key={`s${n}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <div style={s.stepBadge(step === n, step > n)}>{step > n ? '✓' : n}</div>
+                <span style={s.stepLabel(step === n)}>{label}</span>
+              </div>{i < STEPS.length - 1 && <div key={`l${n}`} style={s.stepLine} />}</>
+            )
+          })}
         </div>
 
         {error && <div style={s.error}>{error}</div>}
 
-        {/* Step 1 */}
         {step === 1 && (
           <>
             <h1 style={s.title}>Create a new course</h1>
-            <p style={s.subtitle}>Tell us what you want to learn</p>
-
-            <label style={s.label}>Course Name</label>
-            <input type="text" value={form.title} onChange={e => update('title', e.target.value)} placeholder="e.g. AWS Solutions Architect Prep" style={s.input} />
-
+            <p style={s.subtitle}>What do you want to learn?</p>
+            <label style={s.label}>Course Title</label>
+            <input type="text" value={form.title} onChange={e => update('title', e.target.value)} placeholder="e.g. AI Business Strategy" style={s.input} />
             <label style={s.label}>Subject / Topic</label>
-            <input type="text" value={form.subject} onChange={e => update('subject', e.target.value)} placeholder="e.g. Cloud Computing, Python, Project Management" style={s.input} />
-
+            <input type="text" value={form.subject} onChange={e => update('subject', e.target.value)} placeholder="e.g. Artificial Intelligence, Leadership, Marketing" style={s.input} />
             <label style={s.label}>Level</label>
             <select value={form.level} onChange={e => update('level', e.target.value)} style={s.select}>
-              <option value="beginner">Beginner — start from scratch</option>
-              <option value="intermediate">Intermediate — I know the basics</option>
-              <option value="advanced">Advanced — deep technical knowledge</option>
-              <option value="exam-prep">Exam Prep — focused test preparation</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="executive">Executive</option>
             </select>
-
-            <label style={s.label}>What&apos;s your goal?</label>
-            <input type="text" value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="e.g. Pass the AWS exam, build a production app, onboard new employees" style={s.input} />
-
+            <label style={s.label}>Learning Goal</label>
+            <input type="text" value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="e.g. Understand how to implement AI in my business" style={s.input} />
             <div style={s.btnRow}>
-              <button onClick={() => { if (form.title) setStep(2) }} disabled={!form.title} style={s.btn}>Next: Add Material →</button>
+              <button onClick={() => { if (form.title) setStep(2) }} disabled={!form.title} style={s.btn}>Next: Gather Resources →</button>
             </div>
           </>
         )}
 
-        {/* Step 2 */}
         {step === 2 && (
           <>
-            <h1 style={s.title}>Add your learning material</h1>
-            <p style={s.subtitle}>Paste your text, notes, or study material below</p>
-
-            <label style={s.label}>Paste Text / Notes / Study Material</label>
-            <textarea
-              value={form.rawText}
-              onChange={e => update('rawText', e.target.value)}
-              placeholder="Paste your learning material here — lecture notes, documentation, study guides, SOPs, anything you want to be taught from..."
-              style={s.textarea}
-            />
-            <div style={{ color: '#64748B', fontSize: '12px', marginTop: '-16px', marginBottom: '20px' }}>
-              {form.rawText.length.toLocaleString()} characters. For best results, aim for 500+ words.
+            <h1 style={s.title}>Gather your resources</h1>
+            <p style={s.subtitle}>Add content that powers your course. AI builds lessons from what you provide.</p>
+            <div style={s.tabBar}>
+              <button style={s.tab(resourceTab === 'ai')} onClick={() => setResourceTab('ai')}>🤖 AI Research</button>
+              <button style={s.tab(resourceTab === 'url')} onClick={() => setResourceTab('url')}>🔗 Add URL</button>
+              <button style={s.tab(resourceTab === 'upload')} onClick={() => setResourceTab('upload')}>📁 Upload</button>
             </div>
+
+            {resourceTab === 'ai' && (
+              <div>
+                <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '16px' }}>
+                  AI will find curated resources and build a comprehensive knowledge base for <strong style={{ color: '#F1F5F9' }}>{form.title || form.subject}</strong>.
+                </p>
+                <button onClick={handleAiResearch} disabled={researchLoading || (!form.title && !form.subject)} style={{ ...s.btn, background: researchLoading ? 'rgba(99,102,241,0.4)' : '#6366F1' }}>
+                  {researchLoading ? '🔍 Researching...' : '🔍 Find Resources with AI'}
+                </button>
+                {researchLoading && <p style={{ color: '#64748B', fontSize: '13px', marginTop: '10px' }}>Searching and building knowledge base — ~15 seconds...</p>}
+              </div>
+            )}
+
+            {resourceTab === 'url' && (
+              <div>
+                <label style={s.label}>Paste a URL</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input type="url" value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleFetchUrl() }} placeholder="https://..." style={{ ...s.input, marginBottom: 0, flex: 1 }} />
+                  <button onClick={handleFetchUrl} disabled={fetchingUrl || !urlInput} style={{ ...s.btn, flex: 'none', padding: '11px 20px' }}>{fetchingUrl ? '...' : 'Fetch'}</button>
+                </div>
+                <p style={{ color: '#475569', fontSize: '12px', marginTop: '8px' }}>Works with articles, YouTube, docs, any webpage.</p>
+              </div>
+            )}
+
+            {resourceTab === 'upload' && (
+              <div>
+                <div onClick={() => fileInputRef.current?.click()} style={{ border: '2px dashed rgba(255,255,255,0.15)', borderRadius: '10px', padding: '32px 20px', textAlign: 'center', cursor: 'pointer' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>☁️</div>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>Drop files or click to upload</div>
+                  <div style={{ fontSize: '12px', color: '#64748B' }}>PDF, DOCX, TXT, MD</div>
+                  {fileLoading && <div style={{ color: '#6366F1', marginTop: '8px', fontSize: '13px' }}>Parsing...</div>}
+                </div>
+                <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.docx,.txt,.md" onChange={e => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]) }} />
+              </div>
+            )}
+
+            {resources.length > 0 && (
+              <div style={{ marginTop: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>📚 Resource Pool — {selectedResources.length} selected</div>
+                {resources.map(r => (
+                  <div key={r.id} style={s.resCard}>
+                    <input type="checkbox" checked={r.selected} onChange={() => toggleResource(r.id)} style={{ marginTop: '2px', flexShrink: 0, accentColor: '#6366F1' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: r.selected ? '#F1F5F9' : '#64748B', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span>{typeIcon(r.type)}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                      </div>
+                      {r.description && <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>{r.description}</div>}
+                      {r.text && <div style={{ fontSize: '11px', color: '#334155', marginTop: '2px' }}>{r.text.length.toLocaleString()} chars</div>}
+                    </div>
+                    <button onClick={() => removeResource(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px' }}>×</button>
+                  </div>
+                ))}
+                {combinedText.length > 0 && <div style={{ fontSize: '12px', color: '#64748B', marginTop: '8px' }}>Knowledge base: {combinedText.length.toLocaleString()} characters</div>}
+              </div>
+            )}
 
             <div style={s.btnRow}>
               <button onClick={() => setStep(1)} style={s.btnBack}>← Back</button>
-              <button onClick={() => { if (form.rawText) setStep(3) }} disabled={!form.rawText} style={s.btn}>Next: Choose Style →</button>
+              <button onClick={() => setStep(3)} style={s.btn}>Next: Style & Voice →</button>
             </div>
           </>
         )}
 
-        {/* Step 3 */}
         {step === 3 && (
           <>
-            <h1 style={s.title}>Choose your teaching style</h1>
-            <p style={s.subtitle}>How do you learn best?</p>
-
+            <h1 style={s.title}>Teaching style & voice</h1>
+            <p style={s.subtitle}>How do you want to learn?</p>
             <label style={s.label}>Teaching Style</label>
-            {teachingStyles.map(ts => (
+            {[
+              { value: 'step-by-step', label: '🪜 Step-by-Step', desc: 'Build on each concept progressively' },
+              { value: 'plain-english', label: '💬 Plain English', desc: 'Simple language, real examples, no jargon' },
+              { value: 'deep-dive', label: '🔬 Deep Dive', desc: 'Thorough with the why and how' },
+              { value: 'executive', label: '🎓 Executive', desc: 'MIT-level rigor, strategic frameworks, case studies' },
+              { value: 'coach-mode', label: '🏋️ Coach Mode', desc: 'Motivating, challenge-based' },
+            ].map(ts => (
               <div key={ts.value} style={s.styleOption(form.teachingStyle === ts.value)} onClick={() => update('teachingStyle', ts.value)}>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>{ts.label}</div>
+                <div style={{ fontWeight: 600, marginBottom: '2px' }}>{ts.label}</div>
                 <div style={{ fontSize: '13px' }}>{ts.desc}</div>
               </div>
             ))}
-
-            <label style={{ ...s.label, marginTop: '8px' }}>Quiz Frequency</label>
+            <label style={{ ...s.label, marginTop: '16px' }}>Quiz Frequency</label>
             <select value={form.quizMode} onChange={e => update('quizMode', e.target.value)} style={s.select}>
               <option value="after_each_lesson">After each lesson (recommended)</option>
               <option value="after_each_unit">After each unit</option>
               <option value="on_request">Only when I ask</option>
             </select>
-
+            <div style={{ marginTop: '8px', marginBottom: '24px' }}>
+              <VoiceSelector selectedVoiceId={form.voiceId} onSelect={voiceId => update('voiceId', voiceId)} />
+            </div>
             <div style={s.btnRow}>
               <button onClick={() => setStep(2)} style={s.btnBack}>← Back</button>
-              <button onClick={handleSubmit} disabled={loading} style={s.btn}>
-                {loading ? '🤖 Generating curriculum...' : '🚀 Build My Curriculum →'}
+              <button onClick={() => setStep(4)} style={s.btn}>Review & Build →</button>
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h1 style={s.title}>Ready to build</h1>
+            <p style={s.subtitle}>Review your course setup</p>
+            <div style={{ background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {[['Course', form.title], ['Subject', form.subject || '—'], ['Level', form.level], ['Style', form.teachingStyle], ['Resources', `${selectedResources.length} items`], ['Knowledge Base', `${combinedText.length.toLocaleString()} chars`]].map(([l, v]) => (
+                  <div key={l}><div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: '14px', fontWeight: 600 }}>{v}</div></div>
+                ))}
+              </div>
+            </div>
+            <div style={s.btnRow}>
+              <button onClick={() => setStep(3)} style={s.btnBack}>← Back</button>
+              <button onClick={handleSubmit} disabled={loading} style={{ ...s.btn, background: loading ? 'rgba(99,102,241,0.4)' : '#6366F1' }}>
+                {loading ? '🤖 Building curriculum...' : '🚀 Build My Curriculum →'}
               </button>
             </div>
-
-            {loading && (
-              <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', marginTop: '16px' }}>
-                AI is designing your curriculum. This takes 15–30 seconds...
-              </div>
-            )}
+            {loading && <p style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', marginTop: '12px' }}>AI is designing your curriculum from your resources. 15–30 seconds...</p>}
           </>
         )}
       </main>
