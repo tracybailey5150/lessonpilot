@@ -32,23 +32,45 @@ export default function VoiceSelector({ selectedVoiceId, onSelect, compact = fal
   const previewVoice = async (voiceId: string) => {
     if (previewing === voiceId) {
       audioRef.current?.pause()
+      if (audioRef.current?.src?.startsWith('blob:')) URL.revokeObjectURL(audioRef.current.src)
       setPreviewing(null)
       return
     }
     setPreviewing(voiceId)
     try {
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        if (audioRef.current.src?.startsWith('blob:')) URL.revokeObjectURL(audioRef.current.src)
+      }
+
       const res = await fetch('/api/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: "Hi, I'm your AI instructor. I'll be teaching your course today.", voiceId }),
       })
-      const data = await res.json()
-      if (data.audio) {
-        audioRef.current?.pause()
-        const audio = new Audio(data.audio)
-        audioRef.current = audio
-        audio.onended = () => setPreviewing(null)
-        audio.play()
+
+      if (!res.ok) { setPreviewing(null); return }
+
+      // Use Blob URL — works on iOS Safari, Chrome, Firefox, all browsers
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const audio = new Audio(blobUrl)
+      audioRef.current = audio
+      audio.onended = () => {
+        URL.revokeObjectURL(blobUrl)
+        setPreviewing(null)
+      }
+      audio.onerror = () => {
+        URL.revokeObjectURL(blobUrl)
+        setPreviewing(null)
+      }
+      // play() returns a Promise — must await/catch for iOS
+      try {
+        await audio.play()
+      } catch {
+        URL.revokeObjectURL(blobUrl)
+        setPreviewing(null)
       }
     } catch {
       setPreviewing(null)
