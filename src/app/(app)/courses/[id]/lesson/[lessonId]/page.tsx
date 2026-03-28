@@ -4,6 +4,9 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import dynamic from 'next/dynamic'
+
+const DriveMode = dynamic(() => import('@/components/DriveMode'), { ssr: false })
 
 interface Resource {
   id: string
@@ -95,6 +98,7 @@ export default function LessonPage() {
   const [lessonResources, setLessonResources] = useState<Resource[]>([])
 
   const audio = useAudioPlayer()
+  const [driveModeActive, setDriveModeActive] = useState(false)
 
   // Build the full text to read aloud
   const buildReadAloudText = (l: Lesson) => {
@@ -120,6 +124,11 @@ export default function LessonPage() {
     } else {
       audio.speak(buildReadAloudText(lesson), audio.speed)
     }
+  }
+
+  const handleDriveModeOpen = () => {
+    audio.stop()
+    setDriveModeActive(true)
   }
 
   // Stop audio when leaving page
@@ -261,6 +270,14 @@ export default function LessonPage() {
 
   return (
     <div style={s.page}>
+      {driveModeActive && lesson && (
+        <DriveMode
+          lesson={lesson}
+          courseId={courseId}
+          onNavigate={(path) => { setDriveModeActive(false); router.push(path) }}
+          onClose={() => setDriveModeActive(false)}
+        />
+      )}
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }`}</style>
 
       <header style={s.header}>
@@ -378,6 +395,12 @@ export default function LessonPage() {
         )}
 
         <div style={s.btnRow}>
+          <button
+            onClick={handleDriveModeOpen}
+            style={{ background: '#FBBF24', color: '#000', border: 'none', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            🚗 Drive Mode
+          </button>
           <button onClick={handleListen} style={s.btnAudio(audio.isPlaying)}>
             {listenLabel}
           </button>
@@ -385,7 +408,6 @@ export default function LessonPage() {
             {completing ? 'Marking...' : 'I get it ✓'}
           </button>
           <button onClick={handleQuiz} style={s.btnPurple}>Quiz me 🧪</button>
-          <button onClick={() => setShowExamples(true)} style={s.btnGhost}>Examples</button>
           <Link href={`/courses/${courseId}`} style={{ ...s.btnGhost, textDecoration: 'none', display: 'inline-block' }}>← Back</Link>
         </div>
       </div>
