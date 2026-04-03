@@ -26,6 +26,9 @@ export default function DashboardPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [progress, setProgress] = useState<ProgressItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [shareUrl, setShareUrl] = useState('')
+  const [addingCourse, setAddingCourse] = useState(false)
+  const [addResult, setAddResult] = useState<{ msg: string; ok: boolean } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -61,6 +64,33 @@ export default function DashboardPage() {
     }
     load()
   }, [router])
+
+  const handleAddByUrl = async () => {
+    if (!shareUrl.trim()) return
+    setAddingCourse(true)
+    setAddResult(null)
+    try {
+      const url = new URL(shareUrl.trim())
+      const code = url.searchParams.get('code')
+      if (!code) { setAddResult({ msg: 'Invalid share link — no code found', ok: false }); setAddingCourse(false); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch(`/api/courses/share?code=${code}&userId=${session.user.id}`)
+      const data = await res.json()
+      if (data.status === 'claimed') {
+        setAddResult({ msg: 'Course added!', ok: true })
+        router.push(`/courses/${data.courseId}`)
+      } else if (data.status === 'already_claimed') {
+        setAddResult({ msg: 'Already in your library', ok: true })
+      } else {
+        setAddResult({ msg: data.error || 'Failed to add course', ok: false })
+      }
+    } catch {
+      setAddResult({ msg: 'Invalid URL', ok: false })
+    }
+    setAddingCourse(false)
+    setShareUrl('')
+  }
 
   const getCompletedCount = (courseId: string) =>
     progress.filter(p => p.course_id === courseId && p.status === 'completed').length
@@ -163,6 +193,29 @@ export default function DashboardPage() {
                 <span style={{ fontSize: '24px' }}>+</span>
                 <span>New Course</span>
               </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Add Course by URL */}
+        <div style={{ marginTop: '40px' }}>
+          <div style={s.sectionTitle}>Add Shared Course</div>
+          <div style={{ display: 'flex', gap: '10px', maxWidth: '500px' }}>
+            <input
+              type="url"
+              value={shareUrl}
+              onChange={e => setShareUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddByUrl() }}
+              placeholder="Paste share link here..."
+              style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '11px 14px', color: '#F1F5F9', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <button onClick={handleAddByUrl} disabled={addingCourse || !shareUrl.trim()} style={{ ...s.btn, opacity: addingCourse || !shareUrl.trim() ? 0.5 : 1 }}>
+              {addingCourse ? '...' : 'Add'}
+            </button>
+          </div>
+          {addResult && (
+            <div style={{ marginTop: '8px', fontSize: '13px', color: addResult.ok ? '#4ADE80' : '#F87171' }}>
+              {addResult.msg}
             </div>
           )}
         </div>

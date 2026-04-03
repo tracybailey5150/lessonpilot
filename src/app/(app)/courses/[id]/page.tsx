@@ -45,6 +45,9 @@ export default function CoursePage() {
   const [progress, setProgress] = useState<Record<string, string>>({})
   const [scores, setScores] = useState<Record<string, number>>({})
   const [generatingCount, setGeneratingCount] = useState<{ ready: number; total: number } | null>(null)
+  const [shareLink, setShareLink] = useState<string | null>(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -105,6 +108,25 @@ export default function CoursePage() {
     checkGeneration()
     return () => { cancelled = true }
   }, [courseId, loading])
+
+  async function handleShare() {
+    setShareLoading(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const res = await fetch('/api/courses/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId, userId: session.user.id }),
+    })
+    const data = await res.json()
+    if (data.shareCode) {
+      const link = `${window.location.origin}/shared?code=${data.shareCode}`
+      setShareLink(link)
+      navigator.clipboard.writeText(link).then(() => setShareCopied(true)).catch(() => {})
+      setTimeout(() => setShareCopied(false), 3000)
+    }
+    setShareLoading(false)
+  }
 
   async function toggleComplete(lessonId: string) {
     if (!userId) return
@@ -296,6 +318,16 @@ export default function CoursePage() {
             <Link href={`/courses/${courseId}/progress`} style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B' }}>
               View Progress
             </Link>
+
+            {/* Share */}
+            <button onClick={handleShare} disabled={shareLoading} style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', width: '100%', marginTop: '8px' }}>
+              {shareLoading ? '...' : shareCopied ? '✓ Link Copied!' : '🔗 Share Course'}
+            </button>
+            {shareLink && (
+              <div style={{ marginTop: '8px', padding: '8px 10px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '6px', fontSize: '11px', color: '#A78BFA', wordBreak: 'break-all', cursor: 'pointer' }} onClick={() => { navigator.clipboard.writeText(shareLink); setShareCopied(true); setTimeout(() => setShareCopied(false), 3000) }}>
+                {shareLink}
+              </div>
+            )}
 
             {/* Course Passed — Download Section */}
             {coursePassed && (
