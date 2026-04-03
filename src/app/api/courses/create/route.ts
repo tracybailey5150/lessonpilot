@@ -87,12 +87,21 @@ export async function POST(req: NextRequest) {
     const truncatedText = rawText.slice(0, 8000)
 
     const bootcampPrompt = isBootcamp
-      ? `Design a ${days}-day intensive bootcamp curriculum with exactly ${sections} sections per day.
-Each "unit" represents ONE DAY. Title each unit "Day X: [Topic Theme]".
-Each day MUST have exactly ${sections} lessons (sections). Include timing estimates.
-Return JSON: { "units": [{ "title": "Day 1: [theme]", "summary": "string", "lessons": [{ "title": "Section 1: [topic]", "objective": "string", "difficulty": "beginner|intermediate|advanced", "estimated_minutes": 45 }] }] }
-Total: ${days} units (days), each with ${sections} lessons (sections).
-Structure the content to build progressively across days.`
+      ? `Design a ${days}-day intensive bootcamp curriculum. This is a FULL ${days}-day training program.
+
+CRITICAL REQUIREMENTS:
+- You MUST return EXACTLY ${days} units (one per day). Not fewer.
+- Each unit MUST have EXACTLY ${sections} lessons (sections).
+- Total lessons = ${days * sections}.
+- Each section represents ~45 minutes of intensive study.
+- Title units "Day 1: [Theme]", "Day 2: [Theme]", etc.
+- Title lessons "Section 1: [Topic]", "Section 2: [Topic]", etc.
+- Content must be SUBSTANTIAL enough for a real training day — not surface-level.
+- Spread the material evenly across all ${days} days. Day 1 covers fundamentals, middle days cover core topics, final day covers advanced topics and review.
+
+Return JSON: { "units": [{ "title": "Day 1: [theme]", "summary": "What this day covers in 2-3 sentences", "lessons": [{ "title": "Section 1: [topic]", "objective": "Detailed learning objective (2 sentences)", "difficulty": "beginner|intermediate|advanced", "estimated_minutes": 45 }] }] }
+
+VERIFY: Your response must contain exactly ${days} units and exactly ${sections} lessons per unit.`
       : `Given this learning material, create a structured curriculum.
 Return JSON: { "units": [{ "title": "string", "summary": "string", "lessons": [{ "title": "string", "objective": "string", "difficulty": "beginner|intermediate|advanced" }] }] }
 Maximum 5 units, 4 lessons per unit. Keep it focused and logical.`

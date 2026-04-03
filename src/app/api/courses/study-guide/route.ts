@@ -25,6 +25,36 @@ export async function GET(req: NextRequest) {
       .eq('course_id', courseId)
       .order('order_index')
 
+    // Check for ungenerated lessons — if any have no content, generate them now
+    const ungeneratedLessons = (lessons || []).filter(l => !l.content)
+    if (ungeneratedLessons.length > 0) {
+      // Trigger generation for all ungenerated lessons
+      for (const lesson of ungeneratedLessons) {
+        try {
+          const genRes = await fetch(new URL('/api/lessons/generate', req.url).toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lessonId: lesson.id }),
+          })
+          if (genRes.ok) {
+            const data = await genRes.json()
+            if (data.lesson) {
+              Object.assign(lesson, data.lesson)
+            }
+          }
+        } catch {
+          // Continue with what we have
+        }
+      }
+    }
+
+    // Also fetch source material for reference appendix
+    const { data: sourceDocs } = await supabase
+      .from('source_documents')
+      .select('filename, raw_text')
+      .eq('course_id', courseId)
+      .limit(3)
+
     const isBootcamp = course.course_format === 'bootcamp'
 
     // Build study guide as clean HTML for print/save
@@ -120,6 +150,22 @@ ${course.goal ? `<p><strong>Goal:</strong> ${course.goal}</p>` : ''}
         html += `</div>`
       }
       html += `<hr>`
+    }
+
+    // Source material appendix
+    if (sourceDocs && sourceDocs.length > 0) {
+      const hasText = sourceDocs.some(d => d.raw_text && d.raw_text.length > 100)
+      if (hasText) {
+        html += `<h2>📎 Reference Material</h2>
+<p style="color:#666;font-size:13px">Source material used to build this course curriculum.</p>`
+        for (const doc of sourceDocs) {
+          if (doc.raw_text && doc.raw_text.length > 100) {
+            html += `<div style="background:#f8f8f8;border:1px solid #e5e5e5;border-radius:6px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.7;max-height:600px;overflow-y:auto">
+${doc.raw_text.slice(0, 15000).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')}</div>`
+          }
+        }
+        html += `<hr>`
+      }
     }
 
     html += `<div style="text-align:center;color:#999;font-size:12px;margin-top:40px">

@@ -206,7 +206,10 @@ export default function QuizPage() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <Link href={`/courses/${courseId}/lesson/${lessonId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Back to Lesson</Link>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <Link href={`/courses/${courseId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Course</Link>
+          <Link href={`/courses/${courseId}/lesson/${lessonId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Lesson</Link>
+        </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             style={s.btnAudio(audio.isPlaying)}
