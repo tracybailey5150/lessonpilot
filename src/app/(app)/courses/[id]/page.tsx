@@ -45,8 +45,6 @@ export default function CoursePage() {
   const [progress, setProgress] = useState<Record<string, string>>({})
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<string | null>(null)
-  const [deletingLesson, setDeletingLesson] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -98,16 +96,6 @@ export default function CoursePage() {
     }
   }
 
-  async function deleteLesson(lessonId: string) {
-    setDeletingLesson(lessonId)
-    await supabase.from('progress').delete().eq('lesson_id', lessonId)
-    const { error } = await supabase.from('lessons').delete().eq('id', lessonId)
-    if (!error) {
-      setUnits(prev => prev.map(u => ({ ...u, lessons: u.lessons.filter(l => l.id !== lessonId) })))
-      setConfirmDeleteLesson(null)
-    }
-    setDeletingLesson(null)
-  }
 
   const totalLessons = units.reduce((a, u) => a + u.lessons.length, 0)
   const completedLessons = Object.values(progress).filter(s => s === 'completed').length
@@ -204,55 +192,23 @@ export default function CoursePage() {
                 <span style={{ color: '#64748B', fontSize: '12px' }}>{unit.lessons.length} lessons</span>
               </div>
               {unit.lessons.map(lesson => (
-                <div key={lesson.id}>
-                  {confirmDeleteLesson === lesson.id ? (
-                    <div style={{ ...styles.lessonRow, background: 'rgba(239,68,68,0.06)', borderLeft: '3px solid rgba(239,68,68,0.5)', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '13px', color: '#F87171' }}>Delete &ldquo;{lesson.title}&rdquo;?</span>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => deleteLesson(lesson.id)}
-                          disabled={deletingLesson === lesson.id}
-                          style={{ background: '#EF4444', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                        >
-                          {deletingLesson === lesson.id ? '...' : 'Yes, delete'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteLesson(null)}
-                          style={{ background: 'rgba(255,255,255,0.07)', color: '#94A3B8', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={styles.lessonRow}>
-                      <button
-                        onClick={() => toggleComplete(lesson.id)}
-                        title={progress[lesson.id] === 'completed' ? 'Mark incomplete' : 'Mark complete'}
-                        style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '24px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
-                      >
-                        {statusIcon(lesson.id)}
-                      </button>
-                      <Link
-                        href={`/courses/${courseId}/lesson/${lesson.id}`}
-                        style={{ flex: 1, textDecoration: 'none', color: '#F1F5F9' }}
-                      >
-                        <div style={{ fontSize: '14px', fontWeight: 600 }}>{lesson.title}</div>
-                        {lesson.objective && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '2px' }}>{lesson.objective}</div>}
-                      </Link>
-                      <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
-                      {lesson.estimated_minutes && <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>~{lesson.estimated_minutes}m</span>}
-                      <button
-                        onClick={() => setConfirmDeleteLesson(lesson.id)}
-                        title="Delete lesson"
-                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '4px 6px', fontSize: '14px', lineHeight: 1, borderRadius: '4px', flexShrink: 0 }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#475569')}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
+                <div key={lesson.id} style={styles.lessonRow}>
+                  <button
+                    onClick={() => toggleComplete(lesson.id)}
+                    title={progress[lesson.id] === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+                    style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '24px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                  >
+                    {statusIcon(lesson.id)}
+                  </button>
+                  <Link
+                    href={`/courses/${courseId}/lesson/${lesson.id}`}
+                    style={{ flex: 1, textDecoration: 'none', color: '#F1F5F9' }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{lesson.title}</div>
+                    {lesson.objective && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '2px' }}>{lesson.objective}</div>}
+                  </Link>
+                  <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
+                  {lesson.estimated_minutes && <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>~{lesson.estimated_minutes}m</span>}
                 </div>
               ))}
             </div>
