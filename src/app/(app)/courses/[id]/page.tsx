@@ -44,6 +44,7 @@ export default function CoursePage() {
   const [units, setUnits] = useState<Unit[]>([])
   const [progress, setProgress] = useState<Record<string, string>>({})
   const [scores, setScores] = useState<Record<string, number>>({})
+  const [generatingCount, setGeneratingCount] = useState<{ ready: number; total: number } | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -83,6 +84,27 @@ export default function CoursePage() {
     }
     load()
   }, [courseId, router])
+
+  // Poll for lesson generation progress
+  useEffect(() => {
+    if (!courseId || loading) return
+    let cancelled = false
+
+    async function checkGeneration() {
+      const { data: allLessons } = await supabase.from('lessons').select('id, content').eq('course_id', courseId)
+      if (cancelled || !allLessons) return
+      const total = allLessons.length
+      const ready = allLessons.filter(l => l.content).length
+      if (ready < total) {
+        setGeneratingCount({ ready, total })
+        setTimeout(checkGeneration, 5000) // poll every 5s
+      } else {
+        setGeneratingCount(null)
+      }
+    }
+    checkGeneration()
+    return () => { cancelled = true }
+  }, [courseId, loading])
 
   async function toggleComplete(lessonId: string) {
     if (!userId) return
@@ -185,6 +207,16 @@ export default function CoursePage() {
           </div>
 
           <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>Curriculum</h2>
+
+          {generatingCount && (
+            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '16px', height: '16px', border: '2px solid rgba(99,102,241,0.3)', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '13px', color: '#A78BFA', fontWeight: 600 }}>AI is preparing your lessons</div>
+                <div style={{ fontSize: '12px', color: '#64748B' }}>{generatingCount.ready} of {generatingCount.total} ready — lessons become available as they finish</div>
+              </div>
+            </div>
+          )}
 
           {units.length === 0 && (
             <div style={{ color: '#64748B', textAlign: 'center', padding: '40px' }}>

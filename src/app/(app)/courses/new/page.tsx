@@ -164,6 +164,12 @@ export default function NewCoursePage() {
       })
       const data = await res.json()
       if (data.courseId) {
+        // Fire-and-forget: start pre-generating all lesson content in background
+        fetch('/api/courses/pregenerate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courseId: data.courseId }),
+        }).catch(() => {}) // silent — lessons will generate on-demand as fallback
         router.push(`/courses/${data.courseId}`)
       } else {
         setError(data.error || 'Failed to create course')
