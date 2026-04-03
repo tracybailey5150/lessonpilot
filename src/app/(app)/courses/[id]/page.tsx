@@ -80,6 +80,24 @@ export default function CoursePage() {
     load()
   }, [courseId, router])
 
+  async function toggleComplete(lessonId: string) {
+    if (!userId) return
+    const current = progress[lessonId]
+    if (current === 'completed') {
+      // Unmark — set back to in_progress
+      await supabase.from('progress').update({ status: 'in_progress', score: null, mastery_level: 0 }).eq('user_id', userId).eq('lesson_id', lessonId)
+      setProgress(p => ({ ...p, [lessonId]: 'in_progress' }))
+    } else {
+      // Mark complete
+      await fetch('/api/progress/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, lessonId, courseId, status: 'completed', score: 100 }),
+      })
+      setProgress(p => ({ ...p, [lessonId]: 'completed' }))
+    }
+  }
+
   async function deleteLesson(lessonId: string) {
     setDeletingLesson(lessonId)
     await supabase.from('progress').delete().eq('lesson_id', lessonId)
@@ -208,9 +226,13 @@ export default function CoursePage() {
                     </div>
                   ) : (
                     <div style={styles.lessonRow}>
-                      <span style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '20px' }}>
+                      <button
+                        onClick={() => toggleComplete(lesson.id)}
+                        title={progress[lesson.id] === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+                        style={{ color: statusColor(lesson.id), fontWeight: 700, fontSize: '16px', width: '24px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                      >
                         {statusIcon(lesson.id)}
-                      </span>
+                      </button>
                       <Link
                         href={`/courses/${courseId}/lesson/${lesson.id}`}
                         style={{ flex: 1, textDecoration: 'none', color: '#F1F5F9' }}
@@ -277,9 +299,25 @@ export default function CoursePage() {
               View Progress
             </Link>
 
-            <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
-              📄 Download Study Guide
-            </a>
+            {/* Study Guide Downloads */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {units.length > 1 ? (
+                <>
+                  {units.map(unit => (
+                    <a key={unit.id} href={`/api/courses/study-guide?courseId=${courseId}&unitId=${unit.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', fontSize: '13px', color: '#94A3B8' }}>
+                      📄 {unit.title}
+                    </a>
+                  ))}
+                  <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '10px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '8px', fontSize: '13px', color: '#A78BFA', textAlign: 'center', fontWeight: 600 }}>
+                    📚 Full Study Guide
+                  </a>
+                </>
+              ) : (
+                <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
+                  📄 Download Study Guide
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>
