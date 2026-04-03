@@ -9,21 +9,37 @@ export async function POST(req: NextRequest) {
     const { lessonId } = await req.json()
     const supabase = createServiceClient()
 
-    const { data: lesson } = await supabase.from('lessons').select('*').eq('id', lessonId).single()
+    const { data: lesson } = await supabase.from('lessons').select('*, courses(title, subject, goal)').eq('id', lessonId).single()
     if (!lesson) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
 
+    const course = lesson.courses as any
+    const certKeywords = ['pmp', 'capm', 'comptia', 'a+', 'network+', 'security+', 'aws', 'azure', 'cisco', 'ccna', 'cissp', 'ceh', 'itil', 'scrum', 'csm', 'six sigma', 'certification', 'exam prep']
+    const courseText = `${course?.title || ''} ${course?.subject || ''} ${course?.goal || ''}`.toLowerCase()
+    const isCertExam = certKeywords.some(k => courseText.includes(k))
+
     const content = `${lesson.title}\n${lesson.objective}\n${lesson.content || ''}\n${lesson.examples || ''}`
+
+    const certQuizInstructions = isCertExam ? `
+EXAM PREP MODE: Generate questions that mirror REAL certification exam questions:
+- Use the same question style and wording as the actual exam
+- Include realistic distractors (wrong answers that seem plausible)
+- Add "situational" questions: "A project manager is in this situation... what should they do?"
+- Include questions where 2+ answers seem correct but only one is the BEST answer
+- Test exact terminology, processes, and frameworks from the exam
+- Make this feel like a practice exam, not a classroom quiz
+` : ''
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
         {
           role: 'system',
-          content: 'You are a quiz generator. Return ONLY valid JSON, no markdown, no code blocks.'
+          content: `You are a quiz generator${isCertExam ? ' specializing in certification exam practice questions' : ''}. Return ONLY valid JSON, no markdown, no code blocks.`
         },
         {
           role: 'user',
-          content: `Generate a 5-question quiz for this lesson. Mix multiple choice and short answer.
+          content: `Generate a ${isCertExam ? '7' : '5'}-question quiz for this lesson. ${isCertExam ? 'Use mostly multiple choice (exam style).' : 'Mix multiple choice and short answer.'}
+${certQuizInstructions}
 Return JSON:
 {
   "questions": [
@@ -36,12 +52,13 @@ Return JSON:
     },
     {
       "id": "q2",
-      "type": "short_answer",
+      "type": "${isCertExam ? 'multiple_choice' : 'short_answer'}",
       "question": "...",
-      "correct": "ideal answer"
+      ${isCertExam ? '"options": ["A", "B", "C", "D"],' : ''}
+      "correct": "${isCertExam ? 'B' : 'ideal answer'}"
     }
   ],
-  "answerKey": { "q1": "A", "q2": "ideal answer" }
+  "answerKey": { "q1": "A", "q2": "${isCertExam ? 'B' : 'ideal answer'}" }
 }
 
 Lesson content:

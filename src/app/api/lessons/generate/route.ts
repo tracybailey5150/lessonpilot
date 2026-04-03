@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
     const isBootcamp = course?.course_format === 'bootcamp'
     const estimatedMin = lesson.estimated_minutes || (isBootcamp ? 45 : 0)
 
+    // Detect cert exam courses
+    const certKeywords = ['pmp', 'capm', 'comptia', 'a+', 'network+', 'security+', 'aws', 'azure', 'cisco', 'ccna', 'cissp', 'ceh', 'itil', 'scrum', 'csm', 'six sigma', 'certification', 'exam prep']
+    const courseText = `${course?.title} ${course?.subject} ${course?.goal}`.toLowerCase()
+    const isCertExam = certKeywords.some(k => courseText.includes(k))
+
     // Retrieve relevant chunks via embedding similarity
     let sourceContext = ''
     try {
@@ -68,6 +73,12 @@ export async function POST(req: NextRequest) {
 }
 
 ${estimatedMin >= 30 ? `IMPORTANT: This is a ${estimatedMin}-minute training section in an intensive bootcamp. The content MUST be substantial and detailed — cover the topic thoroughly with explanations, context, why it matters, how to apply it, common mistakes, and best practices. Do NOT write a brief overview. Write a COMPLETE lesson that takes 30-45 minutes to study.` : ''}
+${isCertExam ? `EXAM PREP: This is a certification exam prep lesson. Focus on TESTABLE material:
+- Include specific facts, numbers, and definitions the exam asks about
+- Explain how the exam words questions on this topic and common wrong-answer traps
+- Include mnemonics or memory tricks for key concepts
+- Note which concepts are high-frequency exam questions
+- Frame everything as "you need to know this for the exam"` : ''}
 
 Teaching style: ${teachingStyle}
 Level: ${level}

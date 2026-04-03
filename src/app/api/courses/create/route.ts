@@ -86,9 +86,26 @@ export async function POST(req: NextRequest) {
     // Generate curriculum with GPT-4
     const truncatedText = rawText.slice(0, 8000)
 
+    // Detect certification/exam courses
+    const certKeywords = ['pmp', 'capm', 'comptia', 'a+', 'network+', 'security+', 'aws', 'azure', 'cisco', 'ccna', 'cissp', 'ceh', 'itil', 'scrum', 'csm', 'six sigma', 'prince2', 'cfa', 'cpa', 'nclex', 'usmle', 'certification', 'exam prep', 'license exam', 'board exam']
+    const combinedCheck = `${title} ${subject} ${level} ${goal}`.toLowerCase()
+    const isCertExam = certKeywords.some(k => combinedCheck.includes(k))
+
+    const certInstructions = isCertExam ? `
+THIS IS A CERTIFICATION EXAM PREP COURSE. You MUST:
+- Structure content around the OFFICIAL EXAM DOMAINS and their weight percentages
+- Cover every domain that appears on the actual exam
+- Include exam-specific strategies: how questions are worded, common traps, elimination techniques
+- Day 1: foundations + exam structure + highest-weighted domains
+- Middle days: remaining domains in order of exam weight
+- Final day: practice strategies, weak area review, exam day tips
+- Each section must teach TESTABLE material — facts, processes, formulas, frameworks the exam asks about
+- Do NOT teach general knowledge — focus on what the EXAM tests
+` : ''
+
     const bootcampPrompt = isBootcamp
       ? `Design a ${days}-day intensive bootcamp curriculum. This is a FULL ${days}-day training program.
-
+${certInstructions}
 CRITICAL REQUIREMENTS:
 - You MUST return EXACTLY ${days} units (one per day). Not fewer.
 - Each unit MUST have EXACTLY ${sections} lessons (sections).
