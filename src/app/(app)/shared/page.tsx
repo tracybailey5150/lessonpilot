@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-export default function SharedCoursePage() {
+export default function SharedCoursePageWrapper() {
+  return (
+    <Suspense fallback={<div style={{ background: '#070C18', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>Loading...</div>}>
+      <SharedCoursePage />
+    </Suspense>
+  )
+}
+
+function SharedCoursePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const code = searchParams.get('code')
