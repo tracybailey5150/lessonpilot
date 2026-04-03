@@ -132,6 +132,7 @@ export default function DashboardPage() {
           <span style={{ fontSize: '14px', fontWeight: 700, color: '#dde4f0', letterSpacing: '-0.02em' }}>LessonPilot</span>
         </Link>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <a href="https://lessonpilot.org/" style={{ color: '#3d4666', fontSize: '12px', textDecoration: 'none' }}>Home</a>
           <Link href="/settings" style={{ color: '#3d4666', fontSize: '12px', textDecoration: 'none' }}>Settings</Link>
           <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.06)' }} />
           <span style={{ color: '#3d4666', fontSize: '12px' }}>{user?.email}</span>
