@@ -16,6 +16,12 @@ interface Resource {
   file_size: number | null
 }
 
+interface Visual {
+  type: 'table' | 'flowchart' | 'comparison' | 'timeline' | 'concept_map' | 'callout'
+  title: string
+  data: any
+}
+
 interface Lesson {
   id: string
   title: string
@@ -27,6 +33,7 @@ interface Lesson {
   difficulty: string
   course_id: string
   unit_id: string
+  visuals?: Visual[]
 }
 
 // ─── Audio Player Hook (OpenAI TTS) ─────────────────────────────────────────
@@ -121,6 +128,10 @@ export default function LessonPage() {
 
   const audio = useAudioPlayer(courseVoice)
   const [driveModeActive, setDriveModeActive] = useState(false)
+
+  // Slideshow mode
+  const [slideMode, setSlideMode] = useState(false)
+  const [slideIdx, setSlideIdx] = useState(0)
 
   // Q&A Chat
   const [qaOpen, setQaOpen] = useState(false)
@@ -320,6 +331,176 @@ export default function LessonPage() {
 
   const listenLabel = audio.isLoading ? '⏳ Loading...' : audio.isPlaying && !audio.isPaused ? '⏸ Pause' : audio.isPaused ? '▶ Resume' : '🔊 Listen'
 
+  const visuals: Visual[] = Array.isArray(lesson?.visuals) ? lesson.visuals : []
+
+  // Render a single visual element
+  const renderVisual = (v: Visual, i: number) => {
+    const vs = {
+      card: { background: '#0C1220', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '12px', padding: '20px', marginBottom: '16px' } as React.CSSProperties,
+      title: { fontSize: '13px', fontWeight: 700, color: '#A78BFA', marginBottom: '12px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' },
+    }
+
+    if (v.type === 'callout') {
+      return (
+        <div key={i} style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '10px', padding: '16px 20px', marginBottom: '16px', borderLeft: '4px solid #F59E0B' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#FBBF24', marginBottom: '6px' }}>💡 {v.title || 'Important'}</div>
+          <div style={{ fontSize: '14px', color: '#FDE68A', lineHeight: 1.6 }}>{String(v.data)}</div>
+        </div>
+      )
+    }
+
+    if (v.type === 'table' && Array.isArray(v.data) && v.data.length > 0) {
+      const cols = Object.keys(v.data[0])
+      return (
+        <div key={i} style={vs.card}>
+          <div style={vs.title}>📊 {v.title}</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr>{cols.map(c => <th key={c} style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid rgba(99,102,241,0.3)', color: '#A78BFA', fontWeight: 700, whiteSpace: 'nowrap' }}>{c}</th>)}</tr>
+              </thead>
+              <tbody>
+                {v.data.map((row: any, ri: number) => (
+                  <tr key={ri}>{cols.map(c => <td key={c} style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#E2E8F0' }}>{String(row[c] || '')}</td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+    if (v.type === 'flowchart' && Array.isArray(v.data)) {
+      return (
+        <div key={i} style={vs.card}>
+          <div style={vs.title}>🔄 {v.title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+            {v.data.map((step: string, si: number) => (
+              <div key={si} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', color: '#E2E8F0', fontWeight: 600, whiteSpace: 'nowrap' }}>{step}</div>
+                {si < v.data.length - 1 && <span style={{ color: '#6366F1', fontSize: '18px' }}>→</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (v.type === 'comparison' && typeof v.data === 'object' && !Array.isArray(v.data)) {
+      const keys = Object.keys(v.data)
+      return (
+        <div key={i} style={vs.card}>
+          <div style={vs.title}>⚖️ {v.title}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${keys.length}, 1fr)`, gap: '12px' }}>
+            {keys.map(k => (
+              <div key={k}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#6366F1', marginBottom: '8px', paddingBottom: '6px', borderBottom: '2px solid rgba(99,102,241,0.3)' }}>{k}</div>
+                {Array.isArray(v.data[k]) && v.data[k].map((item: string, ii: number) => (
+                  <div key={ii} style={{ fontSize: '13px', color: '#CBD5E1', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>• {item}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (v.type === 'timeline' && Array.isArray(v.data)) {
+      return (
+        <div key={i} style={vs.card}>
+          <div style={vs.title}>📅 {v.title}</div>
+          <div style={{ position: 'relative', paddingLeft: '24px' }}>
+            <div style={{ position: 'absolute', left: '8px', top: '4px', bottom: '4px', width: '2px', background: 'rgba(99,102,241,0.3)' }} />
+            {v.data.map((item: any, ti: number) => (
+              <div key={ti} style={{ position: 'relative', marginBottom: '14px' }}>
+                <div style={{ position: 'absolute', left: '-20px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: '#6366F1' }} />
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#E2E8F0' }}>{item.label || item}</div>
+                {item.detail && <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{item.detail}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (v.type === 'concept_map' && typeof v.data === 'object' && !Array.isArray(v.data)) {
+      return (
+        <div key={i} style={vs.card}>
+          <div style={vs.title}>🗺️ {v.title}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {Object.entries(v.data).map(([concept, items]) => (
+              <div key={concept}>
+                <div style={{ display: 'inline-block', background: '#6366F1', color: '#fff', padding: '6px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '14px', marginBottom: '8px' }}>{concept}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: '12px' }}>
+                  {Array.isArray(items) && items.map((t: string, ti: number) => (
+                    <span key={ti} style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', color: '#CBD5E1' }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  // Build slides for slideshow mode
+  const buildSlides = () => {
+    if (!lesson) return []
+    const slides: { title: string; content: React.ReactNode }[] = []
+
+    slides.push({
+      title: lesson.title,
+      content: (
+        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontSize: '14px', color: '#A78BFA', marginBottom: '16px' }}>🎓 LessonPilot AI Instructor</div>
+          <div style={{ fontSize: '28px', fontWeight: 800, marginBottom: '16px' }}>{lesson.title}</div>
+          {lesson.objective && <div style={{ fontSize: '16px', color: '#94A3B8', lineHeight: 1.6 }}>🎯 {lesson.objective}</div>}
+        </div>
+      ),
+    })
+
+    if (lesson.content) {
+      const paragraphs = lesson.content.split('\n\n').filter(p => p.trim())
+      const chunkSize = Math.ceil(paragraphs.length / Math.max(1, Math.ceil(paragraphs.length / 3)))
+      for (let i = 0; i < paragraphs.length; i += chunkSize) {
+        const chunk = paragraphs.slice(i, i + chunkSize).join('\n\n')
+        slides.push({ title: `Lesson (${Math.floor(i / chunkSize) + 1})`, content: <div style={{ fontSize: '16px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>{chunk}</div> })
+      }
+    }
+
+    for (const v of visuals) {
+      slides.push({ title: v.title, content: renderVisual(v, 0) })
+    }
+
+    if (lesson.examples) {
+      slides.push({ title: 'Examples', content: <div style={{ fontSize: '15px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>📌 {lesson.examples}</div> })
+    }
+
+    if (keyTermsArray.length > 0) {
+      slides.push({
+        title: 'Key Terms',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {keyTermsArray.map((t, i) => (
+              <div key={i} style={{ padding: '10px 16px', background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.15)', borderRadius: '8px', fontSize: '14px', color: '#FDE68A' }}>{typeof t === 'string' ? t : JSON.stringify(t)}</div>
+            ))}
+          </div>
+        ),
+      })
+    }
+
+    if (lesson.recap) {
+      slides.push({ title: 'Recap', content: <div style={{ fontSize: '16px', lineHeight: 1.8, color: '#E2E8F0', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '24px' }}>🔁 {lesson.recap}</div> })
+    }
+
+    return slides
+  }
+
+  const slides = lesson ? buildSlides() : []
+
   return (
     <div style={s.page}>
       {driveModeActive && lesson && (
@@ -331,6 +512,34 @@ export default function LessonPage() {
           onClose={() => setDriveModeActive(false)}
         />
       )}
+      {/* Slideshow Mode */}
+      {slideMode && lesson && slides.length > 0 && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: '#070C18', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#64748B' }}>
+              📽️ Slide {slideIdx + 1} / {slides.length} — {slides[slideIdx]?.title}
+            </div>
+            <button onClick={() => setSlideMode(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 14px', color: '#64748B', cursor: 'pointer', fontSize: '13px' }}>✕ Exit Slides</button>
+          </div>
+
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+            <div style={{ maxWidth: '720px', width: '100%' }}>
+              {slides[slideIdx]?.content}
+            </div>
+          </div>
+
+          <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'center', gap: '12px', alignItems: 'center' }}>
+            <button disabled={slideIdx === 0} onClick={() => setSlideIdx(i => i - 1)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 20px', color: slideIdx === 0 ? '#334155' : '#E2E8F0', cursor: slideIdx === 0 ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600 }}>← Previous</button>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {slides.map((_, i) => (
+                <div key={i} onClick={() => setSlideIdx(i)} style={{ width: i === slideIdx ? '24px' : '8px', height: '8px', borderRadius: '4px', background: i === slideIdx ? '#6366F1' : 'rgba(255,255,255,0.15)', cursor: 'pointer', transition: 'all 0.2s' }} />
+              ))}
+            </div>
+            <button disabled={slideIdx >= slides.length - 1} onClick={() => setSlideIdx(i => i + 1)} style={{ background: slideIdx >= slides.length - 1 ? 'rgba(255,255,255,0.05)' : '#6366F1', border: 'none', borderRadius: '8px', padding: '10px 20px', color: slideIdx >= slides.length - 1 ? '#334155' : '#fff', cursor: slideIdx >= slides.length - 1 ? 'default' : 'pointer', fontSize: '14px', fontWeight: 600 }}>Next →</button>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }`}</style>
 
       <header style={s.header}>
@@ -412,6 +621,13 @@ export default function LessonPage() {
               <span>{showRecap ? '▲' : '▼'}</span>
             </div>
             {showRecap && <div style={s.expandBody}>{lesson.recap}</div>}
+          </div>
+        )}
+
+        {/* Visual Aids */}
+        {visuals.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            {visuals.map((v, i) => renderVisual(v, i))}
           </div>
         )}
 
@@ -541,6 +757,12 @@ export default function LessonPage() {
             style={{ background: '#FBBF24', color: '#000', border: 'none', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 800, cursor: 'pointer' }}
           >
             🚗 Drive Mode
+          </button>
+          <button
+            onClick={() => { setSlideIdx(0); setSlideMode(true) }}
+            style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#A78BFA', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            📽️ Slides
           </button>
           <button onClick={() => setQaOpen(o => !o)} style={{ background: qaOpen ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.08)', border: `1px solid ${qaOpen ? 'rgba(99,102,241,0.6)' : 'rgba(99,102,241,0.2)'}`, color: '#A78BFA', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
             {qaOpen ? '✕ Close Q&A' : '❓ Ask Instructor'}

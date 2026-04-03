@@ -63,13 +63,31 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Generate a complete lesson. Return JSON with these exact fields:
+          content: `Generate a complete lesson with visual learning aids. Return JSON with these exact fields:
 {
   "content": "detailed lesson explanation (plain text, no markdown, ${estimatedMin >= 30 ? '1500-2500 words — this is a 45-minute intensive training section, be thorough and detailed' : '300-600 words'})",
   "examples": "${estimatedMin >= 30 ? '4-6 detailed, real-world examples with explanations (plain text)' : '2-3 concrete examples (plain text)'}",
   "keyTerms": ["term: definition", "term: definition"${estimatedMin >= 30 ? ' — include 10-15 key terms' : ''}],
   "recap": "${estimatedMin >= 30 ? 'comprehensive 6-8 sentence summary covering all key points' : 'brief 3-4 sentence summary'}",
-  "checkQuestions": ["question 1", "question 2", "question 3"${estimatedMin >= 30 ? ', "question 4", "question 5" — include 5 review questions' : ''}]
+  "checkQuestions": ["question 1", "question 2", "question 3"${estimatedMin >= 30 ? ', "question 4", "question 5" — include 5 review questions' : ''}],
+  "visuals": [
+    {
+      "type": "table|flowchart|comparison|timeline|concept_map|callout",
+      "title": "short title for this visual",
+      "data": "content varies by type — see below"
+    }
+  ]
+}
+
+VISUAL AIDS — include 2-4 visuals that help explain the material:
+- "table": data is a JSON array of rows, each row is an object with column headers as keys. Example: [{"Process":"Plan","Input":"Charter","Output":"Plan Doc"}]
+- "flowchart": data is an array of steps as strings, shown as a sequential flow. Example: ["Initiate","Plan","Execute","Monitor","Close"]
+- "comparison": data is an object with two keys to compare. Example: {"Predictive":["Defined scope","Sequential phases","Change controlled"],"Agile":["Evolving scope","Iterative sprints","Change embraced"]}
+- "timeline": data is an array of {"label":"Phase 1","detail":"Description"} objects shown chronologically
+- "concept_map": data is an object where keys are central concepts and values are arrays of related terms. Example: {"Risk Management":["Identify","Analyze","Plan Response","Monitor"]}
+- "callout": data is a string — an important tip, warning, or exam note displayed prominently
+
+Include visuals that genuinely help understanding — process flows for procedures, tables for comparisons, timelines for sequences, callouts for critical exam tips.
 }
 
 ${estimatedMin >= 30 ? `IMPORTANT: This is a ${estimatedMin}-minute training section in an intensive bootcamp. The content MUST be substantial and detailed — cover the topic thoroughly with explanations, context, why it matters, how to apply it, common mistakes, and best practices. Do NOT write a brief overview. Write a COMPLETE lesson that takes 30-45 minutes to study.` : ''}
@@ -90,7 +108,7 @@ ${sourceContext ? `Source material:\n${sourceContext}` : ''}`
       temperature: 0.7,
     })
 
-    let lessonContent = { content: '', examples: '', keyTerms: [], recap: '', checkQuestions: [] }
+    let lessonContent: any = { content: '', examples: '', keyTerms: [], recap: '', checkQuestions: [], visuals: [] }
     try {
       const raw = response.choices[0].message.content ?? '{}'
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
@@ -105,6 +123,7 @@ ${sourceContext ? `Source material:\n${sourceContext}` : ''}`
       examples: lessonContent.examples,
       key_terms: lessonContent.keyTerms,
       recap: lessonContent.recap,
+      visuals: lessonContent.visuals || [],
     }).eq('id', lessonId)
 
     const { data: updatedLesson } = await supabase.from('lessons').select('*').eq('id', lessonId).single()
