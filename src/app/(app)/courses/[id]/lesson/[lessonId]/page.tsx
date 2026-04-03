@@ -121,6 +121,32 @@ export default function LessonPage() {
   const audio = useAudioPlayer()
   const [driveModeActive, setDriveModeActive] = useState(false)
 
+  // Q&A Chat
+  const [qaOpen, setQaOpen] = useState(false)
+  const [qaQuestion, setQaQuestion] = useState('')
+  const [qaLoading, setQaLoading] = useState(false)
+  const [qaHistory, setQaHistory] = useState<{ role: 'user' | 'ai'; text: string }[]>([])
+
+  const handleAskQuestion = async () => {
+    if (!qaQuestion.trim() || qaLoading) return
+    const q = qaQuestion.trim()
+    setQaHistory(h => [...h, { role: 'user', text: q }])
+    setQaQuestion('')
+    setQaLoading(true)
+    try {
+      const res = await fetch('/api/lessons/qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, question: q }),
+      })
+      const data = await res.json()
+      setQaHistory(h => [...h, { role: 'ai', text: data.answer || 'Sorry, I couldn\'t find an answer.' }])
+    } catch {
+      setQaHistory(h => [...h, { role: 'ai', text: 'Something went wrong. Please try again.' }])
+    }
+    setQaLoading(false)
+  }
+
   // Build the full text to read aloud
   const buildReadAloudText = (l: Lesson) => {
     const keyTermsArray = Array.isArray(l.key_terms)
@@ -320,19 +346,35 @@ export default function LessonPage() {
       </header>
 
       <main style={s.main}>
+        {/* AI Instructor Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>🎓</div>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#A78BFA' }}>LessonPilot AI Instructor</div>
+            <div style={{ fontSize: '11px', color: '#64748B' }}>Teaching · {lesson.difficulty} level</div>
+          </div>
+        </div>
+
         <h1 style={s.h1}>{lesson.title}</h1>
         {lesson.objective && <p style={s.objective}>🎯 {lesson.objective}</p>}
 
+        {/* Lesson content presented as AI teaching */}
         {lesson.content ? (
-          <div style={s.content}>{lesson.content}</div>
+          <div style={{ background: '#0C1220', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+              <span style={{ fontSize: '14px' }}>📖</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lesson</span>
+            </div>
+            <div style={s.content}>{lesson.content}</div>
+          </div>
         ) : (
           <div style={{ color: '#64748B', padding: '40px', textAlign: 'center' }}>No content generated yet.</div>
         )}
 
         {lesson.examples && (
-          <div style={s.expandCard}>
+          <div style={{ ...s.expandCard, borderColor: 'rgba(34,197,94,0.15)' }}>
             <div style={s.expandHeader} onClick={() => setShowExamples(!showExamples)}>
-              <span>📌 Examples</span>
+              <span>📌 Real-World Examples</span>
               <span>{showExamples ? '▲' : '▼'}</span>
             </div>
             {showExamples && <div style={s.expandBody}>{lesson.examples}</div>}
@@ -340,7 +382,7 @@ export default function LessonPage() {
         )}
 
         {keyTermsArray.length > 0 && (
-          <div style={s.expandCard}>
+          <div style={{ ...s.expandCard, borderColor: 'rgba(251,191,36,0.15)' }}>
             <div style={s.expandHeader} onClick={() => setShowTerms(!showTerms)}>
               <span>📖 Key Terms ({keyTermsArray.length})</span>
               <span>{showTerms ? '▲' : '▼'}</span>
@@ -348,7 +390,7 @@ export default function LessonPage() {
             {showTerms && (
               <div style={s.expandBody}>
                 {keyTermsArray.map((term, i) => (
-                  <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     {typeof term === 'string' ? term : JSON.stringify(term)}
                   </div>
                 ))}
@@ -358,7 +400,7 @@ export default function LessonPage() {
         )}
 
         {lesson.recap && (
-          <div style={s.expandCard}>
+          <div style={{ ...s.expandCard, borderColor: 'rgba(99,102,241,0.15)' }}>
             <div style={s.expandHeader} onClick={() => setShowRecap(!showRecap)}>
               <span>🔁 Lesson Recap</span>
               <span>{showRecap ? '▲' : '▼'}</span>
@@ -368,7 +410,7 @@ export default function LessonPage() {
         )}
 
         {lessonResources.length > 0 && (
-          <div style={{ marginTop: '32px' }}>
+          <div style={{ marginTop: '24px' }}>
             <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#F1F5F9' }}>📎 Lesson Resources</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {lessonResources.map(r => {
@@ -390,6 +432,78 @@ export default function LessonPage() {
           </div>
         )}
       </main>
+
+      {/* ── Q&A Chat Panel ── */}
+      {qaOpen && (
+        <div style={{
+          position: 'fixed', bottom: '80px', right: '16px', width: '380px', maxHeight: '500px',
+          background: '#0C1220', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '16px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 50,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>🎓</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#A78BFA' }}>Ask Your Instructor</div>
+                <div style={{ fontSize: '10px', color: '#64748B' }}>Answers grounded in your course material</div>
+              </div>
+            </div>
+            <button onClick={() => setQaOpen(false)} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '18px', padding: '4px' }}>×</button>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '340px' }}>
+            {qaHistory.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#475569', fontSize: '13px' }}>
+                Ask anything about this lesson. The AI will answer using your course materials.
+              </div>
+            )}
+            {qaHistory.map((msg, i) => (
+              <div key={i} style={{
+                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '85%',
+                padding: '10px 14px',
+                borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                background: msg.role === 'user' ? '#6366F1' : 'rgba(255,255,255,0.05)',
+                color: msg.role === 'user' ? '#fff' : '#E2E8F0',
+                fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap',
+              }}>
+                {msg.text}
+              </div>
+            ))}
+            {qaLoading && (
+              <div style={{ alignSelf: 'flex-start', padding: '10px 14px', borderRadius: '12px 12px 12px 2px', background: 'rgba(255,255,255,0.05)', color: '#A78BFA', fontSize: '13px' }}>
+                Thinking...
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={qaQuestion}
+              onChange={e => setQaQuestion(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAskQuestion() }}
+              placeholder="Ask a question..."
+              style={{
+                flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px', padding: '10px 12px', color: '#F1F5F9', fontSize: '13px', outline: 'none',
+              }}
+            />
+            <button
+              onClick={handleAskQuestion}
+              disabled={qaLoading || !qaQuestion.trim()}
+              style={{
+                background: '#6366F1', color: '#fff', border: 'none', borderRadius: '8px',
+                padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                opacity: qaLoading || !qaQuestion.trim() ? 0.5 : 1,
+              }}
+            >
+              Ask
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Action Bar with Audio Controls */}
       <div style={s.actionBar}>
@@ -421,6 +535,9 @@ export default function LessonPage() {
             style={{ background: '#FBBF24', color: '#000', border: 'none', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 800, cursor: 'pointer' }}
           >
             🚗 Drive Mode
+          </button>
+          <button onClick={() => setQaOpen(o => !o)} style={{ background: qaOpen ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.08)', border: `1px solid ${qaOpen ? 'rgba(99,102,241,0.6)' : 'rgba(99,102,241,0.2)'}`, color: '#A78BFA', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+            {qaOpen ? '✕ Close Q&A' : '❓ Ask Instructor'}
           </button>
           <button onClick={handleListen} style={s.btnAudio(audio.isPlaying)}>
             {listenLabel}
