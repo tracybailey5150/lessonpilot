@@ -81,15 +81,26 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,lesson_id' })
 
-    // Add to review queue if failed
-    if (!passed) {
-      await supabase.from('review_queue').insert({
+    // Track missed questions for weakness study guides
+    const missedQuestions = questions.filter((q, i) => {
+      const userAnswer = (answersMap[q.id] || '').toString().trim().toLowerCase()
+      const correctAnswer = (answerKey[q.id] || q.correct || '').toString().trim().toLowerCase()
+      if (q.type === 'multiple_choice') return userAnswer !== correctAnswer
+      const keyWords = correctAnswer.split(' ').filter(w => w.length > 4)
+      const matchedWords = keyWords.filter(w => userAnswer.includes(w))
+      return keyWords.length > 0 ? matchedWords.length / keyWords.length < 0.5 : false
+    }).map(q => ({ question: q.question, correct_answer: answerKey[q.id] || q.correct || '' }))
+
+    // Add to review queue if failed or has misses
+    if (!passed || missedQuestions.length > 0) {
+      await supabase.from('review_queue').upsert({
         user_id: internalUserId,
         course_id: courseId,
         lesson_id: lessonId,
         weakness_score: score,
+        missed_questions: missedQuestions,
         retry_due: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      })
+      }, { onConflict: 'user_id,lesson_id' })
     }
 
     return NextResponse.json({ score, feedback, passed, correct, total: questions.length })

@@ -12,7 +12,13 @@ interface LessonProgress {
   mastery_level: number
   attempts: number
   updated_at: string
-  lesson?: { title: string; difficulty: string }
+  lesson?: { title: string; difficulty: string; unit_id?: string }
+}
+
+interface UnitInfo {
+  id: string
+  title: string
+  order_index: number
 }
 
 export default function ProgressPage() {
@@ -22,6 +28,8 @@ export default function ProgressPage() {
 
   const [progress, setProgress] = useState<LessonProgress[]>([])
   const [course, setCourse] = useState<{ title: string } | null>(null)
+  const [units, setUnits] = useState<UnitInfo[]>([])
+  const [internalUserId, setInternalUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,9 +39,13 @@ export default function ProgressPage() {
 
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
       if (!userRec) return
+      setInternalUserId(userRec.id)
 
       const { data: courseData } = await supabase.from('courses').select('title').eq('id', courseId).single()
       setCourse(courseData)
+
+      const { data: unitsData } = await supabase.from('curriculum_units').select('id, title, order_index').eq('course_id', courseId).order('order_index')
+      setUnits(unitsData || [])
 
       const { data: progressData } = await supabase
         .from('progress')
@@ -41,8 +53,8 @@ export default function ProgressPage() {
         .eq('user_id', userRec.id)
         .eq('course_id', courseId)
 
-      const { data: lessonsData } = await supabase.from('lessons').select('id, title, difficulty').eq('course_id', courseId)
-      const lessonMap: Record<string, { title: string; difficulty: string }> = {}
+      const { data: lessonsData } = await supabase.from('lessons').select('id, title, difficulty, unit_id').eq('course_id', courseId)
+      const lessonMap: Record<string, { title: string; difficulty: string; unit_id?: string }> = {}
       for (const l of lessonsData ?? []) { lessonMap[l.id] = l }
 
       const enriched = (progressData ?? []).map(p => ({ ...p, lesson: lessonMap[p.lesson_id] }))
@@ -146,6 +158,61 @@ export default function ProgressPage() {
                 </Link>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Per-section study guides */}
+        {units.length > 0 && internalUserId && (
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>📋 Weakness Study Guides</h2>
+            <p style={{ color: '#64748B', fontSize: '13px', marginBottom: '12px' }}>
+              AI-generated study guides targeting your weak areas per section. Updates as you take quizzes.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+              {units.map(unit => {
+                const unitLessons = progress.filter(p => p.lesson?.unit_id === unit.id)
+                const unitWeak = unitLessons.filter(p => p.score != null && (p.score ?? 100) < 70)
+                const hasQuizData = unitLessons.some(p => p.score != null)
+                return (
+                  <a
+                    key={unit.id}
+                    href={`/api/courses/weakness-guide?courseId=${courseId}&unitId=${unit.id}&userId=${internalUserId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'block', textDecoration: 'none',
+                      background: unitWeak.length > 0 ? 'rgba(239,68,68,0.06)' : '#0C1220',
+                      border: `1px solid ${unitWeak.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                      borderRadius: '10px', padding: '14px 16px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#F1F5F9', marginBottom: '4px' }}>{unit.title}</div>
+                    {!hasQuizData ? (
+                      <div style={{ fontSize: '11px', color: '#475569' }}>No quiz data yet</div>
+                    ) : unitWeak.length > 0 ? (
+                      <div style={{ fontSize: '11px', color: '#FCA5A5' }}>⚠️ {unitWeak.length} weak area{unitWeak.length > 1 ? 's' : ''} — tap to review</div>
+                    ) : (
+                      <div style={{ fontSize: '11px', color: '#4ADE80' }}>✓ All passing</div>
+                    )}
+                  </a>
+                )
+              })}
+            </div>
+
+            {weakAreas.length > 0 && (
+              <a
+                href={`/api/courses/weakness-guide?courseId=${courseId}&userId=${internalUserId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block', marginTop: '12px', textAlign: 'center', textDecoration: 'none',
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: '10px', padding: '12px', color: '#FCA5A5', fontWeight: 600, fontSize: '14px',
+                }}
+              >
+                📋 Full Weakness Study Guide (All Sections)
+              </a>
+            )}
           </div>
         )}
 
