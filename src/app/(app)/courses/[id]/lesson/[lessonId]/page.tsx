@@ -29,56 +29,77 @@ interface Lesson {
   unit_id: string
 }
 
-// ─── Audio Player Hook ───────────────────────────────────────────────────────
+// ─── Audio Player Hook (OpenAI TTS) ─────────────────────────────────────────
 function useAudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
 
-  const speak = useCallback((text: string, rate = 1) => {
-    window.speechSynthesis.cancel()
-    const utt = new SpeechSynthesisUtterance(text)
-    utt.rate = rate
-    utt.pitch = 1
-    utt.volume = 1
-    // Prefer a clear English voice if available
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('google')) ||
-                      voices.find(v => v.lang === 'en-US') ||
-                      voices[0]
-    if (preferred) utt.voice = preferred
-    utt.onstart = () => { setIsPlaying(true); setIsPaused(false) }
-    utt.onend = () => { setIsPlaying(false); setIsPaused(false) }
-    utt.onpause = () => setIsPaused(true)
-    utt.onresume = () => setIsPaused(false)
-    utt.onerror = () => { setIsPlaying(false); setIsPaused(false) }
-    utteranceRef.current = utt
-    window.speechSynthesis.speak(utt)
+  const cleanup = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.removeAttribute('src')
+      audioRef.current = null
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = null
+    }
   }, [])
 
+  const speak = useCallback(async (text: string, _rate = 1) => {
+    cleanup()
+    setIsLoading(true)
+    setIsPlaying(false)
+    setIsPaused(false)
+    try {
+      const res = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'onyx' }),
+      })
+      if (!res.ok) { setIsLoading(false); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      blobUrlRef.current = url
+      const audio = new Audio(url)
+      audio.playbackRate = _rate
+      audioRef.current = audio
+      audio.onplay = () => { setIsPlaying(true); setIsPaused(false); setIsLoading(false) }
+      audio.onended = () => { setIsPlaying(false); setIsPaused(false); cleanup() }
+      audio.onerror = () => { setIsPlaying(false); setIsPaused(false); setIsLoading(false); cleanup() }
+      await audio.play()
+    } catch {
+      setIsLoading(false)
+      setIsPlaying(false)
+    }
+  }, [cleanup])
+
   const pause = useCallback(() => {
-    window.speechSynthesis.pause()
+    audioRef.current?.pause()
     setIsPaused(true)
   }, [])
 
   const resume = useCallback(() => {
-    window.speechSynthesis.resume()
+    audioRef.current?.play()
     setIsPaused(false)
   }, [])
 
   const stop = useCallback(() => {
-    window.speechSynthesis.cancel()
+    cleanup()
     setIsPlaying(false)
     setIsPaused(false)
+  }, [cleanup])
+
+  const changeSpeed = useCallback((newSpeed: number) => {
+    setSpeed(newSpeed)
+    if (audioRef.current) audioRef.current.playbackRate = newSpeed
   }, [])
 
-  const changeSpeed = useCallback((newSpeed: number, text: string) => {
-    setSpeed(newSpeed)
-    if (isPlaying) speak(text, newSpeed)
-  }, [isPlaying, speak])
-
-  return { isPlaying, isPaused, speed, speak, pause, resume, stop, changeSpeed, setSpeed }
+  return { isPlaying, isPaused, isLoading, speed, speak, pause, resume, stop, changeSpeed, setSpeed }
 }
 
 export default function LessonPage() {
@@ -132,7 +153,7 @@ export default function LessonPage() {
   }
 
   // Stop audio when leaving page
-  useEffect(() => { return () => window.speechSynthesis?.cancel() }, [])
+  useEffect(() => { return () => { audio.stop() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function load() {
@@ -266,7 +287,7 @@ export default function LessonPage() {
       ? Object.entries(lesson.key_terms).map(([k, v]) => `${k}: ${v}`)
       : []
 
-  const listenLabel = audio.isPlaying && !audio.isPaused ? '⏸ Pause' : audio.isPaused ? '▶ Resume' : '🔊 Listen'
+  const listenLabel = audio.isLoading ? '⏳ Loading...' : audio.isPlaying && !audio.isPaused ? '⏸ Pause' : audio.isPaused ? '▶ Resume' : '🔊 Listen'
 
   return (
     <div style={s.page}>
@@ -380,7 +401,7 @@ export default function LessonPage() {
               <button
                 key={sp}
                 style={s.speedBtn(audio.speed === sp)}
-                onClick={() => { audio.setSpeed(sp); audio.stop(); audio.speak(buildReadAloudText(lesson), sp) }}
+                onClick={() => { audio.setSpeed(sp); audio.changeSpeed(sp) }}
               >
                 {sp}x
               </button>
