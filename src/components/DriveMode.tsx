@@ -22,6 +22,7 @@ interface Lesson {
 interface DriveModeProps {
   lesson: Lesson
   courseId: string
+  voiceId?: string
   onNavigate: (path: string) => void
   onClose: () => void
 }
@@ -93,7 +94,7 @@ function buildSections(lesson: Lesson): { id: Section; label: string; text: stri
   return items.filter(s => s.text.trim().length > 0)
 }
 
-export default function DriveMode({ lesson, courseId, onNavigate, onClose }: DriveModeProps) {
+export default function DriveMode({ lesson, courseId, voiceId = 'onyx', onNavigate, onClose }: DriveModeProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [currentSectionIdx, setCurrentSectionIdx] = useState(0)
@@ -103,7 +104,8 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   const [lastCommand, setLastCommand] = useState('')
   const [voiceEnabled, setVoiceEnabled] = useState(false)
 
-  const synthRef = useRef<SpeechSynthesis | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
   const sectionsRef = useRef(buildSections(lesson))
@@ -119,23 +121,33 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
     setStatusMsg(text)
   }, [])
 
-  const speakText = useCallback((text: string, onDone?: () => void) => {
-    if (!synthRef.current) return
-    synthRef.current.cancel()
-    const utt = new SpeechSynthesisUtterance(text)
-    utt.rate = speedRef.current
-    utt.pitch = 1
-    utt.volume = 1
-    const voices = synthRef.current.getVoices()
-    const preferred =
-      voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel'))) ||
-      voices.find(v => v.lang === 'en-US') ||
-      voices[0]
-    if (preferred) utt.voice = preferred
-    utt.onend = () => { if (onDone) onDone() }
-    utt.onerror = () => { if (onDone) onDone() }
-    synthRef.current.speak(utt)
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null }
   }, [])
+
+  const speakText = useCallback(async (text: string, onDone?: () => void) => {
+    stopAudio()
+    try {
+      const res = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 4096), voice: voiceId }),
+      })
+      if (!res.ok) { onDone?.(); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      blobUrlRef.current = url
+      const audio = new Audio(url)
+      audio.playbackRate = speedRef.current
+      audioRef.current = audio
+      audio.onended = () => { URL.revokeObjectURL(url); blobUrlRef.current = null; onDone?.() }
+      audio.onerror = () => { URL.revokeObjectURL(url); blobUrlRef.current = null; onDone?.() }
+      await audio.play()
+    } catch {
+      onDone?.()
+    }
+  }, [voiceId, stopAudio])
 
   const playSection = useCallback((idx: number) => {
     const sections = sectionsRef.current
@@ -161,7 +173,6 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [speakText])
 
   const startDriveMode = useCallback(() => {
-    synthRef.current = window.speechSynthesis
     sectionsRef.current = buildSections(lesson)
     setCurrentSectionIdx(0)
     setIsPlaying(true)
@@ -172,7 +183,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [lesson, playSection, announce])
 
   const handlePause = useCallback(() => {
-    synthRef.current?.pause()
+    audioRef.current?.pause()
     pausedRef.current = true
     setIsPaused(true)
     setIsPlaying(false)
@@ -181,7 +192,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [speakText, announce])
 
   const handleResume = useCallback(() => {
-    synthRef.current?.resume()
+    audioRef.current?.play()
     pausedRef.current = false
     setIsPaused(false)
     setIsPlaying(true)
@@ -225,7 +236,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [speakText, playSection, announce])
 
   const handleQuiz = useCallback(() => {
-    synthRef.current?.cancel()
+    stopAudio()
     setIsPlaying(false)
     speakText('Taking you to the quiz now.', () => {
       onNavigate(`/courses/${courseId}/quiz/${lesson.id}`)
@@ -233,7 +244,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [speakText, courseId, lesson.id, onNavigate])
 
   const handleNext = useCallback(() => {
-    synthRef.current?.cancel()
+    stopAudio()
     setIsPlaying(false)
     speakText('Moving to the next lesson.', () => {
       onNavigate(`/courses/${courseId}`)
@@ -241,7 +252,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   }, [speakText, courseId, onNavigate])
 
   const handleStop = useCallback(() => {
-    synthRef.current?.cancel()
+    stopAudio()
     recognitionRef.current?.stop()
     setIsPlaying(false)
     setIsPaused(false)
@@ -312,7 +323,7 @@ export default function DriveMode({ lesson, courseId, onNavigate, onClose }: Dri
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      synthRef.current?.cancel()
+      stopAudio()
       try { recognitionRef.current?.stop() } catch {}
     }
   }, [])

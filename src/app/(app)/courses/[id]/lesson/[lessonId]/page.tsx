@@ -30,7 +30,7 @@ interface Lesson {
 }
 
 // ─── Audio Player Hook (OpenAI TTS) ─────────────────────────────────────────
-function useAudioPlayer() {
+function useAudioPlayer(voiceId: string = 'onyx') {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -59,7 +59,7 @@ function useAudioPlayer() {
       const res = await fetch('/api/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'onyx' }),
+        body: JSON.stringify({ text, voice: voiceId }),
       })
       if (!res.ok) { setIsLoading(false); return }
       const blob = await res.blob()
@@ -117,8 +117,9 @@ export default function LessonPage() {
   const [showRecap, setShowRecap] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [lessonResources, setLessonResources] = useState<Resource[]>([])
+  const [courseVoice, setCourseVoice] = useState('onyx')
 
-  const audio = useAudioPlayer()
+  const audio = useAudioPlayer(courseVoice)
   const [driveModeActive, setDriveModeActive] = useState(false)
 
   // Q&A Chat
@@ -188,6 +189,10 @@ export default function LessonPage() {
 
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
       if (userRec) setUserId(userRec.id)
+
+      // Get course voice preference
+      const { data: courseData } = await supabase.from('courses').select('voice_id').eq('id', courseId).single()
+      if (courseData?.voice_id) setCourseVoice(courseData.voice_id)
 
       const { data: lessonData } = await supabase.from('lessons').select('*').eq('id', lessonId).single()
 
@@ -321,6 +326,7 @@ export default function LessonPage() {
         <DriveMode
           lesson={lesson}
           courseId={courseId}
+          voiceId={courseVoice}
           onNavigate={(path) => { setDriveModeActive(false); router.push(path) }}
           onClose={() => setDriveModeActive(false)}
         />

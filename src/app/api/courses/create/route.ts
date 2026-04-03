@@ -37,7 +37,7 @@ function chunkText(text: string, chunkTokens = 500, overlapTokens = 50): string[
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, subject, level, goal, teachingStyle, rawText, userId: supabaseAuthId, courseFormat, durationDays, sectionsPerDay } = await req.json()
+    const { title, subject, level, goal, teachingStyle, rawText, userId: supabaseAuthId, courseFormat, durationDays, sectionsPerDay, voiceId } = await req.json()
     const isBootcamp = courseFormat === 'bootcamp'
     const days = isBootcamp ? parseInt(durationDays) || 3 : 0
     const sections = isBootcamp ? parseInt(sectionsPerDay) || 4 : 0
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
         course_format: isBootcamp ? 'bootcamp' : 'self-paced',
         duration_days: days || null,
         sections_per_day: sections || null,
+        voice_id: voiceId || 'onyx',
       })
       .select()
       .single()
