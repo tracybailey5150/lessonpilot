@@ -3,18 +3,15 @@
 import { useState, useRef } from 'react'
 
 export const VOICES = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', style: 'Calm & Professional' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi',   style: 'Strong & Confident' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella',  style: 'Warm & Friendly' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', style: 'Authoritative' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli',   style: 'Energetic' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh',   style: 'Deep & Conversational' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', style: 'Bold' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',   style: 'Neutral & Clear' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam',    style: 'Raspy' },
+  { id: 'onyx', name: 'Onyx', style: 'Deep & Authoritative (Male)' },
+  { id: 'echo', name: 'Echo', style: 'Warm & Conversational (Male)' },
+  { id: 'fable', name: 'Fable', style: 'Expressive & British (Male)' },
+  { id: 'alloy', name: 'Alloy', style: 'Balanced & Neutral' },
+  { id: 'nova', name: 'Nova', style: 'Warm & Friendly (Female)' },
+  { id: 'shimmer', name: 'Shimmer', style: 'Clear & Bright (Female)' },
 ]
 
-export const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM' // Rachel
+export const DEFAULT_VOICE_ID = 'onyx'
 
 interface VoiceSelectorProps {
   selectedVoiceId: string
@@ -38,7 +35,6 @@ export default function VoiceSelector({ selectedVoiceId, onSelect, compact = fal
     }
     setPreviewing(voiceId)
     try {
-      // Stop any currently playing audio
       if (audioRef.current) {
         audioRef.current.pause()
         if (audioRef.current.src?.startsWith('blob:')) URL.revokeObjectURL(audioRef.current.src)
@@ -47,31 +43,18 @@ export default function VoiceSelector({ selectedVoiceId, onSelect, compact = fal
       const res = await fetch('/api/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: "Hi, I'm your AI instructor. I'll be teaching your course today.", voiceId }),
+        body: JSON.stringify({ text: "Hi, I'm your AI instructor. I'll be teaching your course today.", voice: voiceId }),
       })
 
       if (!res.ok) { setPreviewing(null); return }
 
-      // Use Blob URL — works on iOS Safari, Chrome, Firefox, all browsers
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
       const audio = new Audio(blobUrl)
       audioRef.current = audio
-      audio.onended = () => {
-        URL.revokeObjectURL(blobUrl)
-        setPreviewing(null)
-      }
-      audio.onerror = () => {
-        URL.revokeObjectURL(blobUrl)
-        setPreviewing(null)
-      }
-      // play() returns a Promise — must await/catch for iOS
-      try {
-        await audio.play()
-      } catch {
-        URL.revokeObjectURL(blobUrl)
-        setPreviewing(null)
-      }
+      audio.onended = () => { URL.revokeObjectURL(blobUrl); setPreviewing(null) }
+      audio.onerror = () => { URL.revokeObjectURL(blobUrl); setPreviewing(null) }
+      try { await audio.play() } catch { URL.revokeObjectURL(blobUrl); setPreviewing(null) }
     } catch {
       setPreviewing(null)
     }

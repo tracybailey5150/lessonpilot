@@ -37,7 +37,10 @@ function chunkText(text: string, chunkTokens = 500, overlapTokens = 50): string[
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, subject, level, goal, teachingStyle, rawText, userId: supabaseAuthId } = await req.json()
+    const { title, subject, level, goal, teachingStyle, rawText, userId: supabaseAuthId, courseFormat, durationDays, sectionsPerDay } = await req.json()
+    const isBootcamp = courseFormat === 'bootcamp'
+    const days = isBootcamp ? parseInt(durationDays) || 3 : 0
+    const sections = isBootcamp ? parseInt(sectionsPerDay) || 4 : 0
     const supabase = createServiceClient()
 
     // Get user record
@@ -61,7 +64,13 @@ export async function POST(req: NextRequest) {
     // Create course
     const { data: course, error: courseErr } = await supabase
       .from('courses')
-      .insert({ user_id: dbUserId, title, subject, level, goal, teaching_style: teachingStyle || 'step-by-step' })
+      .insert({
+        user_id: dbUserId, title, subject, level, goal,
+        teaching_style: teachingStyle || 'step-by-step',
+        course_format: isBootcamp ? 'bootcamp' : 'self-paced',
+        duration_days: days || null,
+        sections_per_day: sections || null,
+      })
       .select()
       .single()
 
@@ -74,8 +83,20 @@ export async function POST(req: NextRequest) {
       .select()
       .single()
 
-    // Generate curriculum with GPT-4o
+    // Generate curriculum with GPT-4
     const truncatedText = rawText.slice(0, 8000)
+
+    const bootcampPrompt = isBootcamp
+      ? `Design a ${days}-day intensive bootcamp curriculum with exactly ${sections} sections per day.
+Each "unit" represents ONE DAY. Title each unit "Day X: [Topic Theme]".
+Each day MUST have exactly ${sections} lessons (sections). Include timing estimates.
+Return JSON: { "units": [{ "title": "Day 1: [theme]", "summary": "string", "lessons": [{ "title": "Section 1: [topic]", "objective": "string", "difficulty": "beginner|intermediate|advanced", "estimated_minutes": 45 }] }] }
+Total: ${days} units (days), each with ${sections} lessons (sections).
+Structure the content to build progressively across days.`
+      : `Given this learning material, create a structured curriculum.
+Return JSON: { "units": [{ "title": "string", "summary": "string", "lessons": [{ "title": "string", "objective": "string", "difficulty": "beginner|intermediate|advanced" }] }] }
+Maximum 5 units, 4 lessons per unit. Keep it focused and logical.`
+
     const curriculumRes = await openai.chat.completions.create({
       model: "gpt-4.1",
       messages: [
@@ -85,9 +106,12 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Given this learning material, create a structured curriculum.
-Return JSON: { "units": [{ "title": "string", "summary": "string", "lessons": [{ "title": "string", "objective": "string", "difficulty": "beginner|intermediate|advanced" }] }] }
-Maximum 5 units, 4 lessons per unit. Keep it focused and logical.
+          content: `${bootcampPrompt}
+
+Course: ${title}
+Subject: ${subject}
+Level: ${level}
+Goal: ${goal}
 
 Material:
 ${truncatedText}`
@@ -133,6 +157,7 @@ ${truncatedText}`
             objective: lesson.objective,
             difficulty: lesson.difficulty || level,
             order_index: j,
+            estimated_minutes: (lesson as any).estimated_minutes || null,
           })
         }
       }

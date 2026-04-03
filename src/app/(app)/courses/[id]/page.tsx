@@ -12,6 +12,9 @@ interface Course {
   level: string
   goal: string
   teaching_style: string
+  course_format?: string
+  duration_days?: number
+  sections_per_day?: number
 }
 
 interface Unit {
@@ -29,6 +32,7 @@ interface Lesson {
   difficulty: string
   order_index: number
   status?: string
+  estimated_minutes?: number
 }
 
 export default function CoursePage() {
@@ -141,6 +145,11 @@ export default function CoursePage() {
             <div>
               <span style={styles.badge}>{course.subject || 'Course'}</span>
               <span style={styles.badge}>{course.level}</span>
+              {course.course_format === 'bootcamp' && (
+                <span style={{ ...styles.badge, background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  🏕️ {course.duration_days}-Day Bootcamp
+                </span>
+              )}
             </div>
             <h1 style={styles.h1}>{course.title}</h1>
             {course.goal && <p style={{ color: '#64748B', fontSize: '14px' }}>Goal: {course.goal}</p>}
@@ -210,6 +219,7 @@ export default function CoursePage() {
                         {lesson.objective && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '2px' }}>{lesson.objective}</div>}
                       </Link>
                       <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
+                      {lesson.estimated_minutes && <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>~{lesson.estimated_minutes}m</span>}
                       <button
                         onClick={() => setConfirmDeleteLesson(lesson.id)}
                         title="Delete lesson"
@@ -266,6 +276,10 @@ export default function CoursePage() {
             <Link href={`/courses/${courseId}/progress`} style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B' }}>
               View Progress
             </Link>
+
+            <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
+              📄 Download Study Guide
+            </a>
           </div>
         </div>
       </div>

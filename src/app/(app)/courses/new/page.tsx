@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import VoiceSelector, { DEFAULT_VOICE_ID } from '@/components/VoiceSelector'
 
 const FREE_COURSE_LIMIT = 3
+const ADMIN_EMAILS = ['tracybailey5150@icloud.com']
 
 interface ResourceItem {
   id: string
@@ -42,6 +43,9 @@ export default function NewCoursePage() {
     teachingStyle: 'step-by-step',
     quizMode: 'after_each_lesson',
     voiceId: DEFAULT_VOICE_ID,
+    courseFormat: 'self-paced',
+    durationDays: '3',
+    sectionsPerDay: '4',
   })
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
@@ -52,7 +56,8 @@ export default function NewCoursePage() {
       if (!session) { router.push('/login'); return }
       const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', session.user.id).single()
       if (!userRec) { setGateLoading(false); return }
-      const paid = ['active', 'trialing'].includes(userRec.subscription_status ?? '')
+      const isAdmin = ADMIN_EMAILS.includes(session.user.email ?? '')
+      const paid = isAdmin || ['active', 'trialing'].includes(userRec.subscription_status ?? '')
       setIsPaid(paid)
       if (!paid) {
         const { count } = await supabase.from('courses').select('id', { count: 'exact', head: true }).eq('user_id', userRec.id)
@@ -272,6 +277,46 @@ export default function NewCoursePage() {
             </select>
             <label style={s.label}>Learning Goal</label>
             <input type="text" value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="e.g. Understand how to implement AI in my business" style={s.input} />
+
+            <label style={s.label}>Course Format</label>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
+              {[
+                { value: 'self-paced', label: '📚 Self-Paced', desc: 'Learn at your own speed' },
+                { value: 'bootcamp', label: '🏕️ Multi-Day Bootcamp', desc: 'Structured daily sessions' },
+              ].map(f => (
+                <div key={f.value} onClick={() => update('courseFormat', f.value)} style={{
+                  flex: 1, padding: '14px', borderRadius: '10px', cursor: 'pointer',
+                  background: form.courseFormat === f.value ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
+                  border: form.courseFormat === f.value ? '1px solid #6366F1' : '1px solid rgba(255,255,255,0.07)',
+                  color: form.courseFormat === f.value ? '#F1F5F9' : '#64748B',
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: '2px' }}>{f.label}</div>
+                  <div style={{ fontSize: '12px' }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {form.courseFormat === 'bootcamp' && (
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '18px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={s.label}>Number of Days</label>
+                  <select value={form.durationDays} onChange={e => update('durationDays', e.target.value)} style={s.select}>
+                    {[1, 2, 3, 4, 5, 7, 10, 14].map(d => (
+                      <option key={d} value={String(d)}>{d} day{d > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={s.label}>Sections per Day</label>
+                  <select value={form.sectionsPerDay} onChange={e => update('sectionsPerDay', e.target.value)} style={s.select}>
+                    {[2, 3, 4, 5, 6].map(s => (
+                      <option key={s} value={String(s)}>{s} sections</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div style={s.btnRow}>
               <button onClick={() => { if (form.title) setStep(2) }} disabled={!form.title} style={s.btn}>Next: Gather Resources →</button>
             </div>
@@ -390,7 +435,7 @@ export default function NewCoursePage() {
             <p style={s.subtitle}>Review your course setup</p>
             <div style={{ background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                {[['Course', form.title], ['Subject', form.subject || '—'], ['Level', form.level], ['Style', form.teachingStyle], ['Resources', `${selectedResources.length} items`], ['Knowledge Base', `${combinedText.length.toLocaleString()} chars`]].map(([l, v]) => (
+                {[['Course', form.title], ['Subject', form.subject || '—'], ['Level', form.level], ['Format', form.courseFormat === 'bootcamp' ? `${form.durationDays}-day bootcamp · ${form.sectionsPerDay} sections/day` : 'Self-paced'], ['Style', form.teachingStyle], ['Resources', `${selectedResources.length} items`], ['Knowledge Base', `${combinedText.length.toLocaleString()} chars`]].map(([l, v]) => (
                   <div key={l}><div style={{ fontSize: '11px', color: '#64748B', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: '14px', fontWeight: 600 }}>{v}</div></div>
                 ))}
               </div>
