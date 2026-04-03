@@ -43,6 +43,7 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null)
   const [units, setUnits] = useState<Unit[]>([])
   const [progress, setProgress] = useState<Record<string, string>>({})
+  const [scores, setScores] = useState<Record<string, number>>({})
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -67,10 +68,15 @@ export default function CoursePage() {
       setUnits(unitsWithLessons)
 
       if (userRec) {
-        const { data: progressData } = await supabase.from('progress').select('lesson_id, status').eq('user_id', userRec.id).eq('course_id', courseId)
+        const { data: progressData } = await supabase.from('progress').select('lesson_id, status, score').eq('user_id', userRec.id).eq('course_id', courseId)
         const progressMap: Record<string, string> = {}
-        for (const p of progressData ?? []) { progressMap[p.lesson_id] = p.status }
+        const scoresMap: Record<string, number> = {}
+        for (const p of progressData ?? []) {
+          progressMap[p.lesson_id] = p.status
+          if (p.score != null) scoresMap[p.lesson_id] = p.score
+        }
         setProgress(progressMap)
+        setScores(scoresMap)
       }
 
       setLoading(false)
@@ -100,6 +106,10 @@ export default function CoursePage() {
   const totalLessons = units.reduce((a, u) => a + u.lessons.length, 0)
   const completedLessons = Object.values(progress).filter(s => s === 'completed').length
   const progressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+  const scoreValues = Object.values(scores)
+  const avgScore = scoreValues.length > 0 ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) : 0
+  const courseComplete = progressPct === 100
+  const coursePassed = courseComplete && avgScore >= 70
 
   const statusIcon = (lessonId: string) => {
     const s = progress[lessonId]
@@ -248,32 +258,41 @@ export default function CoursePage() {
                   }
                 }
               }
-              return <div style={{ color: '#4ADE80', textAlign: 'center', marginTop: '16px', fontWeight: 600 }}>Course Complete!</div>
+              return <div style={{ color: '#4ADE80', textAlign: 'center', marginTop: '16px', fontWeight: 600 }}>✓ Course Complete!</div>
             })()}
 
             <Link href={`/courses/${courseId}/progress`} style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B' }}>
               View Progress
             </Link>
 
-            {/* Study Guide Downloads */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {units.length > 1 ? (
-                <>
+            {/* Course Passed — Download Section */}
+            {coursePassed && (
+              <div style={{ marginTop: '16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎓</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#4ADE80', marginBottom: '4px' }}>Congratulations!</div>
+                <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '12px' }}>Avg score: {avgScore}% — Course passed</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '10px', background: '#16A34A', borderRadius: '8px', color: '#fff', fontSize: '13px', fontWeight: 700 }}>
+                    📥 Download Full Course
+                  </a>
                   {units.map(unit => (
-                    <a key={unit.id} href={`/api/courses/study-guide?courseId=${courseId}&unitId=${unit.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', fontSize: '13px', color: '#94A3B8' }}>
+                    <a key={unit.id} href={`/api/courses/study-guide?courseId=${courseId}&unitId=${unit.id}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', fontSize: '12px', color: '#94A3B8' }}>
                       📄 {unit.title}
                     </a>
                   ))}
-                  <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none', padding: '10px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '8px', fontSize: '13px', color: '#A78BFA', textAlign: 'center', fontWeight: 600 }}>
-                    📚 Full Study Guide
-                  </a>
-                </>
-              ) : (
-                <a href={`/api/courses/study-guide?courseId=${courseId}`} target="_blank" rel="noopener noreferrer" style={{ ...styles.btn, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748B', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
-                  📄 Download Study Guide
-                </a>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
+
+            {/* Course complete but not passing */}
+            {courseComplete && !coursePassed && avgScore > 0 && (
+              <div style={{ marginTop: '16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#FBBF24', marginBottom: '4px' }}>Almost there!</div>
+                <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '8px' }}>Avg score: {avgScore}% — Need 70% to download</div>
+                <Link href={`/courses/${courseId}/progress`} style={{ fontSize: '12px', color: '#F59E0B', textDecoration: 'none', fontWeight: 600 }}>Review weak areas →</Link>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
