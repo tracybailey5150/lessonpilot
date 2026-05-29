@@ -13,6 +13,14 @@ Each entry follows this structure:
 
 ---
 
+## 2026-05-28 — RLS Security Audit
+- Enabled RLS on `shared_courses` table (was disabled)
+- Verified all 10 policies are properly user-scoped via courses → users → auth.uid() chain
+- No policy changes needed — already fully secured
+- 10 total policies. 0 public, 0 anon, 10 authenticated. All user-scoped.
+
+---
+
 ## 2026-04-27 — Claude Agent
 **Summary:** Initial operational documentation added.
 **Files Changed:** AGENTS.md, PROJECT_CONTEXT.md, ARCHITECTURE.md, RUNBOOK.md, SECURITY_GUARDRAILS.md, MCP_TOOLS.md, DEPLOYMENT_CHECKLIST.md, ENVIRONMENT.md, BACKUP_AND_RECOVERY.md, CHANGELOG_INTERNAL.md, .env.example

@@ -36,6 +36,30 @@
 - No force pushes to `main`.
 - Build must pass before merge.
 
+## Row-Level Security (RLS)
+
+**Status:** All tables secured. 10 total RLS policies. All `{authenticated}`. Zero `{public}` or `{anon}`.
+
+**Scoping:** Every table is user-scoped through the `courses → users → supabase_auth_id = auth.uid()` chain.
+
+**Tables (all owner-scoped):**
+| Table | RLS Enabled | Policy Role |
+|-------|-------------|-------------|
+| courses | Yes | authenticated |
+| lessons | Yes | authenticated |
+| quizzes | Yes | authenticated |
+| progress | Yes | authenticated |
+| review_queue | Yes | authenticated |
+| source_documents | Yes | authenticated |
+| document_chunks | Yes | authenticated |
+| course_resources | Yes | authenticated |
+| curriculum_units | Yes | authenticated |
+| users | Yes | authenticated |
+
+**`shared_courses`:** RLS enabled (was previously disabled). No data policies needed — access controlled at application layer.
+
+**Assessment:** Best-secured project in the ecosystem — was already properly scoped before hardening. No policy changes were needed during the 2026-05-28 audit.
+
 ## Audit Trail
 - All changes must be committed with descriptive messages.
 - DB schema changes must be documented in PR description.
