@@ -232,14 +232,15 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={styles.nav}>
         <a href="/" style={styles.logo}>
-          <Image src="/lessonpilot-full.png" alt="LessonPilot" width={160} height={40} style={{ objectFit: 'contain' }} />
+          <Image src="/lessonpilot-full.png" alt="LessonPilot" width={280} height={70} style={{ objectFit: 'contain' }} />
         </a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
           {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
           {/* <a href="#pricing" style={styles.navLink}>Pricing</a> */}
-          <Link href="/login" style={styles.btnOutline}>Log in</Link>
-          <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link>
+          {/* <Link href="/login" style={styles.btnOutline}>Log in</Link> */}
+          {/* <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link> */}
+          <Link href="/dashboard" style={styles.btnPrimary}>Open Platform</Link>
         </div>
       </nav>
 
@@ -252,7 +253,7 @@ export default function LandingPage() {
           Most AI answers. LessonPilot teaches.
         </p>
         <div style={styles.ctaRow}>
-          <Link href="/signup" style={styles.ctaBig}>Start Learning Free →</Link>
+          <Link href="/dashboard" style={styles.ctaBig}>Open Platform →</Link>
           <a href="#how-it-works" style={styles.ctaSecondary}>See how it works</a>
         </div>
       </div>
@@ -356,10 +357,8 @@ export default function LandingPage() {
         <div style={{ marginBottom: '12px' }}>🎓 <strong>LessonPilot.org</strong></div>
         <div>AI-powered teaching that adapts to you.</div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '24px', justifyContent: 'center' }}>
-          <Link href="/login" style={{ color: '#64748B', textDecoration: 'none' }}>Login</Link>
-          <Link href="/signup" style={{ color: '#64748B', textDecoration: 'none' }}>Sign Up</Link>
           {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
-          {/* <a href="#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</a> */}
+          <Link href="/dashboard" style={{ color: '#64748B', textDecoration: 'none' }}>Open Platform</Link>
         </div>
         <div style={{ marginTop: '24px', color: '#374151' }}>© 2026 LessonPilot.org — All rights reserved</div>
       </footer>
