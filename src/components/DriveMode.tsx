@@ -209,17 +209,17 @@ export default function DriveMode({ lesson, courseId, voiceId = 'onyx', onNaviga
     const newSpeed = Math.min(speedRef.current + 0.25, 2)
     setSpeed(newSpeed)
     speedRef.current = newSpeed
+    if (audioRef.current) audioRef.current.playbackRate = newSpeed
     announce(`⚡ Speed: ${newSpeed}x`)
-    speakText(`Speed set to ${newSpeed} times.`, () => playSection(currentIdxRef.current))
-  }, [speakText, playSection, announce])
+  }, [announce])
 
   const handleSlower = useCallback(() => {
     const newSpeed = Math.max(speedRef.current - 0.25, 0.75)
     setSpeed(newSpeed)
     speedRef.current = newSpeed
+    if (audioRef.current) audioRef.current.playbackRate = newSpeed
     announce(`🐢 Speed: ${newSpeed}x`)
-    speakText(`Slowing down to ${newSpeed} times.`, () => playSection(currentIdxRef.current))
-  }, [speakText, playSection, announce])
+  }, [announce])
 
   const handleSkip = useCallback(() => {
     announce('⏭ Skipping ahead...')
@@ -388,7 +388,8 @@ export default function DriveMode({ lesson, courseId, voiceId = 'onyx', onNaviga
           {[0.75, 1, 1.25, 1.5, 2].map(sp => (
             <button key={sp} style={s.speedBtn(speed === sp)} onClick={() => {
               setSpeed(sp); speedRef.current = sp
-              if (isPlaying) { speakText(`Speed ${sp}.`, () => playSection(currentSectionIdx)) }
+              // Just change playback rate on current audio — don't restart
+              if (audioRef.current) audioRef.current.playbackRate = sp
             }}>
               {sp}x
             </button>
