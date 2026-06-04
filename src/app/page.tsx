@@ -232,7 +232,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={styles.nav}>
         <a href="/" style={styles.logo}>
-          <Image src="/lessonpilot-full.png" alt="LessonPilot" width={280} height={70} style={{ objectFit: 'contain' }} />
+          <img src="/lessonpilot-full.png" alt="LessonPilot" style={{ height: '60px', width: 'auto', objectFit: 'contain' }} />
         </a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
