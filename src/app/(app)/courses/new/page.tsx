@@ -53,7 +53,8 @@ export default function NewCoursePage() {
   useEffect(() => {
     async function checkGate() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { router.push('/login'); return }
       const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', session.user.id).single()
       if (!userRec) { setGateLoading(false); return }
       const isAdmin = ADMIN_EMAILS.includes(session.user.email ?? '')
@@ -155,7 +156,8 @@ export default function NewCoursePage() {
     setError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { router.push('/login'); return }
       const rawText = combinedText || `Course on ${form.title || form.subject}`
       const res = await fetch('/api/courses/create', {
         method: 'POST',

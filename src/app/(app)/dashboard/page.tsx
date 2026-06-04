@@ -56,7 +56,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { router.push('/login'); return }
       const authUser = session.user
       setUser({ email: authUser.email ?? '', full_name: authUser.user_metadata?.full_name })
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authUser.id).single()

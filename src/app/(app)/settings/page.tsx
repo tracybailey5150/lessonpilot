@@ -28,7 +28,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.push('/login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { router.push('/login'); return }
 
       const { data: rec } = await supabase
         .from('users')

@@ -233,7 +233,8 @@ export default function LandingPage() {
         <a href="/" style={styles.logo}>🎓 LessonPilot</a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
-          <a href="#pricing" style={styles.navLink}>Pricing</a>
+          {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
+          {/* <a href="#pricing" style={styles.navLink}>Pricing</a> */}
           <Link href="/login" style={styles.btnOutline}>Log in</Link>
           <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link>
         </div>
@@ -301,12 +302,12 @@ export default function LandingPage() {
 
       <div style={styles.divider} />
 
-      {/* Pricing */}
+      {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
+      {/*
       <section id="pricing" style={styles.section}>
         <h2 style={styles.sectionTitle}>Simple, transparent pricing</h2>
         <p style={styles.sectionSubtitle}>Start free. Scale when you&apos;re ready.</p>
         <div style={styles.pricingGrid}>
-          {/* Free */}
           <div style={styles.pricingCard}>
             <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Free</div>
             <div style={styles.price}>$0</div>
@@ -318,8 +319,6 @@ export default function LandingPage() {
             </ul>
             <Link href="/signup" style={{ ...styles.btnOutline, display: 'block', textAlign: 'center' }}>Get Started</Link>
           </div>
-
-          {/* Pro */}
           <div style={styles.pricingCardFeatured}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '18px', fontWeight: 700 }}>Pro</span>
@@ -334,8 +333,6 @@ export default function LandingPage() {
             </ul>
             <Link href="/signup" style={{ ...styles.btnPrimary, display: 'block', textAlign: 'center' }}>Start 7-Day Free Trial</Link>
           </div>
-
-          {/* Team */}
           <div style={styles.pricingCard}>
             <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Team</div>
             <div style={styles.price}>$49<span style={{ fontSize: '18px', fontWeight: 400 }}>/mo</span></div>
@@ -349,6 +346,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      */}
 
       {/* Footer */}
       <footer style={styles.footer}>
@@ -357,7 +355,8 @@ export default function LandingPage() {
         <div style={{ marginTop: '16px', display: 'flex', gap: '24px', justifyContent: 'center' }}>
           <Link href="/login" style={{ color: '#64748B', textDecoration: 'none' }}>Login</Link>
           <Link href="/signup" style={{ color: '#64748B', textDecoration: 'none' }}>Sign Up</Link>
-          <a href="#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</a>
+          {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
+          {/* <a href="#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</a> */}
         </div>
         <div style={{ marginTop: '24px', color: '#374151' }}>© 2026 LessonPilot.org — All rights reserved</div>
       </footer>

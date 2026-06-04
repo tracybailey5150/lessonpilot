@@ -101,7 +101,8 @@ export default function ResourcesPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { router.push('/login'); return }
       setToken(session.access_token)
 
       const { data: courseData } = await supabase.from('courses').select('id, title').eq('id', courseId).single()
