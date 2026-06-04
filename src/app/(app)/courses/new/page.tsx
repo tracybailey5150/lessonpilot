@@ -55,6 +55,7 @@ export default function NewCoursePage() {
       const { data: { session } } = await supabase.auth.getSession()
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
+      if (!session?.user) { setGateLoading(false); return }
       const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', session.user.id).single()
       if (!userRec) { setGateLoading(false); return }
       const isAdmin = ADMIN_EMAILS.includes(session.user.email ?? '')
@@ -158,6 +159,7 @@ export default function NewCoursePage() {
       const { data: { session } } = await supabase.auth.getSession()
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
+      if (!session?.user) { setError('Not signed in'); setLoading(false); return }
       const rawText = combinedText || `Course on ${form.title || form.subject}`
       const res = await fetch('/api/courses/create', {
         method: 'POST',
@@ -222,19 +224,20 @@ export default function NewCoursePage() {
 
   if (gateLoading) return <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#64748B' }}>Loading...</div></div>
 
-  if (!isPaid && courseCount !== null && courseCount >= FREE_COURSE_LIMIT) {
-    return (
-      <div style={s.page}>
-        <header style={s.header}><Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontWeight: 700 }}>🎓 LessonPilot</Link></header>
-        <main style={{ ...s.main, textAlign: 'center' }}>
-          <div style={{ fontSize: '56px', marginBottom: '24px' }}>🔒</div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px' }}>Free Plan Limit Reached</h1>
-          <p style={{ color: '#64748B', marginBottom: '32px' }}>You&apos;ve used all {FREE_COURSE_LIMIT} free courses. Upgrade to Pro for unlimited courses.</p>
-          <Link href="/settings" style={{ background: '#6366F1', color: '#fff', padding: '14px 32px', borderRadius: '10px', fontWeight: 700, textDecoration: 'none' }}>Upgrade to Pro →</Link>
-        </main>
-      </div>
-    )
-  }
+  // HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION
+  // if (!isPaid && courseCount !== null && courseCount >= FREE_COURSE_LIMIT) {
+  //   return (
+  //     <div style={s.page}>
+  //       <header style={s.header}><Link href="/dashboard" style={{ color: '#F1F5F9', textDecoration: 'none', fontWeight: 700 }}>🎓 LessonPilot</Link></header>
+  //       <main style={{ ...s.main, textAlign: 'center' }}>
+  //         <div style={{ fontSize: '56px', marginBottom: '24px' }}>🔒</div>
+  //         <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px' }}>Free Plan Limit Reached</h1>
+  //         <p style={{ color: '#64748B', marginBottom: '32px' }}>You've used all {FREE_COURSE_LIMIT} free courses. Upgrade to Pro for unlimited courses.</p>
+  //         <Link href="/settings" style={{ background: '#6366F1', color: '#fff', padding: '14px 32px', borderRadius: '10px', fontWeight: 700, textDecoration: 'none' }}>Upgrade to Pro →</Link>
+  //       </main>
+  //     </div>
+  //   )
+  // }
 
   const typeIcon = (type: string) => (({ 'youtube': '▶️', 'article': '📄', 'file': '📁', 'book': '📚', 'course': '🎓', 'paper': '📑', 'knowledge-base': '🧠', 'website': '🌐', 'video': '▶️' } as Record<string,string>)[type] || '🔗')
 
@@ -246,12 +249,13 @@ export default function NewCoursePage() {
       </header>
 
       <main style={s.main}>
-        {!isPaid && courseCount !== null && (
+        {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
+        {/* {!isPaid && courseCount !== null && (
           <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '10px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '13px', color: '#FCD34D' }}>Free plan: {courseCount}/{FREE_COURSE_LIMIT} courses used</span>
             <Link href="/settings" style={{ fontSize: '12px', color: '#6366F1', fontWeight: 600, textDecoration: 'none' }}>Upgrade →</Link>
           </div>
-        )}
+        )} */}
 
         {/* Step indicators */}
         <div style={s.stepRow}>

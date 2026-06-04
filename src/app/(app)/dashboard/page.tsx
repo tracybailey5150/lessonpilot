@@ -58,6 +58,7 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession()
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
+      if (!session?.user) { setLoading(false); return }
       const authUser = session.user
       setUser({ email: authUser.email ?? '', full_name: authUser.user_metadata?.full_name })
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authUser.id).single()
@@ -80,7 +81,8 @@ export default function DashboardPage() {
       const code = url.searchParams.get('code')
       if (!code) { setAddResult({ msg: 'Invalid share link', ok: false }); setAddingCourse(false); return }
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      if (!session?.user) return
       const res = await fetch(`/api/courses/share?code=${code}&userId=${session.user.id}`)
       const data = await res.json()
       if (data.status === 'claimed') { setAddResult({ msg: 'Course added!', ok: true }); router.push(`/courses/${data.courseId}`) }

@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
-      setUserEmail(session.user.email ?? null)
+      if (session?.user) setUserEmail(session.user.email ?? null)
     })
   }, [router])
 

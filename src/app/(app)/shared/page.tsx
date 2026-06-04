@@ -35,7 +35,8 @@ function SharedCoursePage() {
 
       // Check if user is logged in
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setStatus('login'); return }
+      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+      // if (!session) { setStatus('login'); return }
 
       setStatus('preview')
     }
@@ -45,7 +46,9 @@ function SharedCoursePage() {
   const handleClaim = async () => {
     setStatus('claiming')
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setStatus('login'); return }
+    // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
+    // if (!session) { setStatus('login'); return }
+    if (!session?.user) { setStatus('error'); return }
 
     const res = await fetch(`/api/courses/share?code=${code}&userId=${session.user.id}`)
     const data = await res.json()

@@ -76,6 +76,7 @@ export default function QuizPage() {
       const { data: { session } } = await supabase.auth.getSession()
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
+      if (!session?.user) { setLoading(false); return }
 
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
       if (userRec) setUserId(userRec.id)

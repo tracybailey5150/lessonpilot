@@ -30,6 +30,7 @@ export default function SettingsPage() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
       // if (!session) { router.push('/login'); return }
+      if (!session?.user) { setPageLoading(false); return }
 
       const { data: rec } = await supabase
         .from('users')
