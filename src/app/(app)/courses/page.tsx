@@ -26,11 +26,10 @@ export default function CoursesPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setLoading(false); return }
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
 
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
       if (!userRec) { setLoading(false); return }
       setUserId(userRec.id)
 

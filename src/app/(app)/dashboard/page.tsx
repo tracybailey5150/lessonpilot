@@ -56,12 +56,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setLoading(false); return }
-      const authUser = session.user
-      setUser({ email: authUser.email ?? '', full_name: authUser.user_metadata?.full_name })
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authUser.id).single()
+      // AUTH BYPASSED — demo mode
+      const authUser = session?.user ?? { id: 'demo-user', email: 'demo@lessonpilot.org', user_metadata: { full_name: 'Demo User' } }
+      setUser({ email: (authUser as any).email ?? 'demo@lessonpilot.org', full_name: (authUser as any).user_metadata?.full_name ?? 'Demo User' })
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', (authUser as any).id).single()
       if (userRec) {
         const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
         setCourses(coursesData ?? [])
@@ -81,9 +79,9 @@ export default function DashboardPage() {
       const code = url.searchParams.get('code')
       if (!code) { setAddResult({ msg: 'Invalid share link', ok: false }); setAddingCourse(false); return }
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      if (!session?.user) return
-      const res = await fetch(`/api/courses/share?code=${code}&userId=${session.user.id}`)
+      // AUTH BYPASSED — demo mode
+      const userId = session?.user?.id ?? 'demo-user'
+      const res = await fetch(`/api/courses/share?code=${code}&userId=${userId}`)
       const data = await res.json()
       if (data.status === 'claimed') { setAddResult({ msg: 'Course added!', ok: true }); router.push(`/courses/${data.courseId}`) }
       else if (data.status === 'already_claimed') { setAddResult({ msg: 'Already in your library', ok: true }) }
@@ -139,7 +137,7 @@ export default function DashboardPage() {
           <Link href="/settings" style={{ color: '#3d4666', fontSize: '12px', textDecoration: 'none' }}>Settings</Link>
           <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.06)' }} />
           <span style={{ color: '#3d4666', fontSize: '12px' }}>{user?.email}</span>
-          <button onClick={() => { supabase.auth.signOut(); router.push('/login') }} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#3d4666', borderRadius: '5px', padding: '5px 12px', fontSize: '11px', cursor: 'pointer' }}>Sign Out</button>
+          <button onClick={() => { supabase.auth.signOut(); router.push('/') }} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#3d4666', borderRadius: '5px', padding: '5px 12px', fontSize: '11px', cursor: 'pointer' }}>Sign Out</button>
         </div>
       </header>
 

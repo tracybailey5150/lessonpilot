@@ -28,17 +28,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setPageLoading(false); return }
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
+      const authEmail = session?.user?.email ?? 'demo@lessonpilot.org'
 
       const { data: rec } = await supabase
         .from('users')
         .select('id, email, subscription_status, stripe_customer_id')
-        .eq('supabase_auth_id', session.user.id)
+        .eq('supabase_auth_id', authId)
         .single()
 
-      setUserRec(rec ?? { id: session.user.id, email: session.user.email ?? '', subscription_status: 'free', stripe_customer_id: null })
+      setUserRec(rec ?? { id: authId, email: authEmail, subscription_status: 'free', stripe_customer_id: null })
       setPageLoading(false)
     })
   }, [router])

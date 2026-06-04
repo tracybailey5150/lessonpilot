@@ -53,12 +53,12 @@ export default function NewCoursePage() {
   useEffect(() => {
     async function checkGate() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setGateLoading(false); return }
-      const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', session.user.id).single()
-      if (!userRec) { setGateLoading(false); return }
-      const isAdmin = ADMIN_EMAILS.includes(session.user.email ?? '')
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
+      const authEmail = session?.user?.email ?? 'demo@lessonpilot.org'
+      const { data: userRec } = await supabase.from('users').select('id, subscription_status').eq('supabase_auth_id', authId).single()
+      if (!userRec) { setGateLoading(false); setIsPaid(true); return }
+      const isAdmin = ADMIN_EMAILS.includes(authEmail)
       const paid = isAdmin || ['active', 'trialing'].includes(userRec.subscription_status ?? '')
       setIsPaid(paid)
       if (!paid) {
@@ -157,14 +157,13 @@ export default function NewCoursePage() {
     setError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setError('Not signed in'); setLoading(false); return }
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
       const rawText = combinedText || `Course on ${form.title || form.subject}`
       const res = await fetch('/api/courses/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, rawText, userId: session.user.id }),
+        body: JSON.stringify({ ...form, rawText, userId: authId }),
       })
       const data = await res.json()
       if (data.courseId) {

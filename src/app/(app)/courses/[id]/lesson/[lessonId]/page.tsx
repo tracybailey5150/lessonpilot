@@ -196,11 +196,10 @@ export default function LessonPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setLoading(false); return }
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
 
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
       if (userRec) setUserId(userRec.id)
 
       // Get course voice preference
@@ -228,7 +227,7 @@ export default function LessonPage() {
       }
 
       if (userRec) {
-        const token = session.access_token
+        const token = session?.access_token ?? 'demo-token'
         const resResp = await fetch(`/api/resources?courseId=${courseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })

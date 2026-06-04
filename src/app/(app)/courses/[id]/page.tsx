@@ -54,11 +54,10 @@ export default function CoursePage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (!session?.user) { setLoading(false); return }
+      // AUTH BYPASSED — demo mode
+      const authId = session?.user?.id ?? 'demo-user'
 
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
       if (userRec) setUserId(userRec.id)
 
       const { data: courseData } = await supabase.from('courses').select('*').eq('id', courseId).single()
@@ -114,12 +113,12 @@ export default function CoursePage() {
   async function handleShare() {
     setShareLoading(true)
     const { data: { session } } = await supabase.auth.getSession()
-    // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-    if (!session?.user) { setShareLoading(false); return }
+    // AUTH BYPASSED — demo mode
+    const authId = session?.user?.id ?? 'demo-user'
     const res = await fetch('/api/courses/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ courseId, userId: session.user.id }),
+      body: JSON.stringify({ courseId, userId: authId }),
     })
     const data = await res.json()
     if (data.shareCode) {

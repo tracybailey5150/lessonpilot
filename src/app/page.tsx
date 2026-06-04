@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function LandingPage() {
   const styles = {
@@ -230,7 +231,9 @@ export default function LandingPage() {
     <div style={styles.page}>
       {/* Nav */}
       <nav style={styles.nav}>
-        <a href="/" style={styles.logo}>🎓 LessonPilot</a>
+        <a href="/" style={styles.logo}>
+          <Image src="/lessonpilot-full.png" alt="LessonPilot" width={160} height={40} style={{ objectFit: 'contain' }} />
+        </a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
           {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}

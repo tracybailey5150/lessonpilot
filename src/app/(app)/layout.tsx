@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -14,9 +15,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // AUTH BYPASSED FOR DEMO — RE-ENABLE AFTER PRESENTATION
-      // if (!session) { router.push('/login'); return }
-      if (session?.user) setUserEmail(session.user.email ?? null)
+      // AUTH BYPASSED — demo mode
+      setUserEmail(session?.user?.email ?? 'demo@lessonpilot.org')
     })
   }, [router])
 
@@ -49,8 +49,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 50,
     }}>
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <Link href="/dashboard" style={{ fontSize: '18px', fontWeight: 800, color: '#F1F5F9', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          🎓 <span>Lesson<span style={{ color: '#38BDF8' }}>Pilot</span></span>
+        <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Image src="/lessonpilot-logo.png" alt="LessonPilot" width={32} height={32} style={{ objectFit: 'contain', borderRadius: '6px' }} />
+          <span style={{ fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Lesson<span style={{ color: '#38BDF8' }}>Pilot</span></span>
         </Link>
       </div>
       <nav style={{ padding: '16px 12px', flex: 1 }}>
@@ -70,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         {userEmail && <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</div>}
         <button style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: '#475569', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', width: '100%' }}
-          onClick={() => { supabase.auth.signOut(); router.push('/login') }}>
+          onClick={() => { supabase.auth.signOut(); router.push('/') }}>
           Sign Out
         </button>
       </div>
@@ -85,8 +86,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 16px', height: '56px',
     }}>
-      <Link href="/dashboard" style={{ fontSize: '16px', fontWeight: 800, color: '#F1F5F9', textDecoration: 'none' }}>
-        🎓 Lesson<span style={{ color: '#38BDF8' }}>Pilot</span>
+      <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <Image src="/lessonpilot-logo.png" alt="LessonPilot" width={28} height={28} style={{ objectFit: 'contain', borderRadius: '5px' }} />
+        <span style={{ fontSize: '16px', fontWeight: 800, color: '#F1F5F9' }}>Lesson<span style={{ color: '#38BDF8' }}>Pilot</span></span>
       </Link>
       <button
         onClick={() => setMenuOpen(o => !o)}
@@ -122,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {userEmail && <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px', paddingLeft: '14px' }}>{userEmail}</div>}
         <button
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#EF4444', borderRadius: '8px', padding: '10px 16px', fontSize: '14px', cursor: 'pointer', width: '100%' }}
-          onClick={() => { supabase.auth.signOut(); router.push('/login') }}
+          onClick={() => { supabase.auth.signOut(); router.push('/') }}
         >
           Sign Out
         </button>
