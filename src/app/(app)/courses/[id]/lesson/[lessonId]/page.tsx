@@ -17,9 +17,11 @@ interface Resource {
 }
 
 interface Visual {
-  type: 'table' | 'flowchart' | 'comparison' | 'timeline' | 'concept_map' | 'callout'
+  type: 'table' | 'flowchart' | 'comparison' | 'timeline' | 'concept_map' | 'callout' | 'image' | 'diagram'
   title: string
   data: any
+  url?: string
+  caption?: string
 }
 
 interface Lesson {
@@ -451,6 +453,23 @@ export default function LessonPage() {
               </div>
             ))}
           </div>
+        </div>
+      )
+    }
+
+    if ((v.type === 'image' || v.type === 'diagram') && (v.url || v.data)) {
+      const imgUrl = v.url || (typeof v.data === 'string' ? v.data : '')
+      return (
+        <div key={i} style={{ ...vs.card, textAlign: 'center' as const }}>
+          <div style={vs.title}>{v.type === 'diagram' ? '📐' : '🖼️'} {v.title}</div>
+          {imgUrl && (
+            <img
+              src={imgUrl}
+              alt={v.title}
+              style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: v.caption ? '10px' : '0' }}
+            />
+          )}
+          {v.caption && <div style={{ fontSize: '12px', color: '#64748B', marginTop: '8px', fontStyle: 'italic' }}>{v.caption}</div>}
         </div>
       )
     }
