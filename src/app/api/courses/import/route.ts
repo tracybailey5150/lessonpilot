@@ -180,5 +180,13 @@ export async function POST(req: Request) {
     })
   }
 
+  // Fire-and-forget: embed lesson content for Q&A instructor
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lessonpilot.org'
+  fetch(`${baseUrl}/api/courses/embed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ courseId: course.id }),
+  }).catch(() => {})
+
   return Response.json({ courseId: course.id, lessonsImported: payload.lessons.length })
 }
