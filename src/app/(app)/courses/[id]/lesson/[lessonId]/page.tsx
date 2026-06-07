@@ -693,6 +693,16 @@ export default function LessonPage() {
           <div style={{ color: '#64748B', padding: '40px', textAlign: 'center' }}>No content generated yet.</div>
         )}
 
+        {/* Visual Aids — tables, flowcharts, comparisons, timelines, concept maps */}
+        {visuals.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📊</span> Visual Aids
+            </div>
+            {visuals.map((v, i) => renderVisual(v, i))}
+          </div>
+        )}
+
         {lesson.examples && (
           <div style={{ ...s.expandCard, borderColor: 'rgba(34,197,94,0.15)' }}>
             <div style={s.expandHeader} onClick={() => setShowExamples(!showExamples)}>
@@ -731,12 +741,6 @@ export default function LessonPage() {
           </div>
         )}
 
-        {/* Visual Aids */}
-        {visuals.length > 0 && (
-          <div style={{ marginTop: '24px' }}>
-            {visuals.map((v, i) => renderVisual(v, i))}
-          </div>
-        )}
 
         {lessonResources.length > 0 && (
           <div style={{ marginTop: '24px' }}>
