@@ -373,7 +373,7 @@ export default function NewCoursePage() {
                   <div style={{ fontSize: '12px', color: '#64748B' }}>PDF, DOCX, TXT, MD</div>
                   {fileLoading && <div style={{ color: '#6366F1', marginTop: '8px', fontSize: '13px' }}>Parsing...</div>}
                 </div>
-                <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".pdf,.docx,.txt,.md" onChange={e => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]) }} />
+                <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} accept=".pdf,.docx,.txt,.md" onChange={async e => { if (e.target.files) { for (const f of Array.from(e.target.files)) { await handleFileUpload(f) } } }} />
               </div>
             )}
 
