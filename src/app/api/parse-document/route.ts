@@ -19,10 +19,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (fileName.endsWith('.pdf')) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require('pdf-parse')
-      const data = await pdfParse(buffer)
-      return NextResponse.json({ text: data.text })
+      const pdfjsLib = await import('pdfjs-dist')
+      const data = new Uint8Array(bytes)
+      const pdf = await pdfjsLib.getDocument({ data, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise
+      const pages: string[] = []
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const text = content.items.map((item: any) => item.str || '').join(' ')
+        pages.push(text)
+      }
+      return NextResponse.json({ text: pages.join('\n\n') })
     }
 
     // For .doc/.docx and other formats, try to extract text as utf-8

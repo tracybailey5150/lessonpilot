@@ -129,8 +129,8 @@ export default function NewCoursePage() {
     setFileLoading(true)
     setError('')
     try {
-      if (file.size > 10 * 1024 * 1024) {
-        setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 10 MB.`)
+      if (file.size > 20 * 1024 * 1024) {
+        setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 20 MB.`)
         setFileLoading(false)
         return
       }
@@ -143,16 +143,26 @@ export default function NewCoursePage() {
           reader.onerror = reject
           reader.readAsText(file)
         })
-      } else {
+      } else if (fileName.endsWith('.pdf')) {
         const fd = new FormData()
         fd.append('file', file)
         const res = await fetch('/api/parse-document', { method: 'POST', body: fd })
         if (!res.ok) {
           const errText = await res.text()
-          throw new Error(errText || `Upload failed (${res.status})`)
+          throw new Error(errText || `PDF upload failed (${res.status})`)
         }
         const data = await res.json()
         text = data.text || ''
+      } else {
+        text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = e => resolve((e.target?.result as string) || '')
+          reader.onerror = reject
+          reader.readAsText(file)
+        })
+      }
+      if (!text.trim()) {
+        throw new Error(`Could not extract text from "${file.name}"`)
       }
       addResource({ title: file.name, type: 'file', text, description: `Uploaded file (${(file.size / 1024).toFixed(0)} KB)` })
     } catch (e) {

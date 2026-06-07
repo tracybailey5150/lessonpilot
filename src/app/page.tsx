@@ -154,45 +154,6 @@ export default function LandingPage() {
       fontSize: '14px',
       lineHeight: 1.6,
     } as React.CSSProperties,
-    pricingGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-      gap: '24px',
-      marginTop: '40px',
-    } as React.CSSProperties,
-    pricingCard: {
-      background: '#0C1220',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: '12px',
-      padding: '32px',
-    } as React.CSSProperties,
-    pricingCardFeatured: {
-      background: '#0C1220',
-      border: '1px solid #6366F1',
-      borderRadius: '12px',
-      padding: '32px',
-    } as React.CSSProperties,
-    price: {
-      fontSize: '40px',
-      fontWeight: 800,
-      marginBottom: '8px',
-    } as React.CSSProperties,
-    priceNote: {
-      color: '#64748B',
-      fontSize: '14px',
-      marginBottom: '24px',
-    } as React.CSSProperties,
-    featureList: {
-      listStyle: 'none',
-      padding: 0,
-      margin: '0 0 28px',
-    } as React.CSSProperties,
-    featureItem: {
-      padding: '8px 0',
-      color: '#94A3B8',
-      fontSize: '14px',
-      borderBottom: '1px solid rgba(255,255,255,0.04)',
-    } as React.CSSProperties,
     stepRow: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
