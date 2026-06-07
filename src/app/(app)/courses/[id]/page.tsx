@@ -272,7 +272,12 @@ export default function CoursePage() {
                   <div style={styles.unitTitle}>{unit.title}</div>
                   {unit.summary && <div style={{ color: '#64748B', fontSize: '12px', marginTop: '4px' }}>{unit.summary}</div>}
                 </div>
-                <span style={{ color: '#64748B', fontSize: '12px' }}>{unit.lessons.length} lessons</span>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <span style={{ color: '#38BDF8', fontSize: '11px', background: 'rgba(56,189,248,0.08)', padding: '3px 8px', borderRadius: '20px' }}>
+                    ⏱ {unit.lessons.reduce((a, l) => a + (l.estimated_minutes || 0), 0)}m
+                  </span>
+                  <span style={{ color: '#64748B', fontSize: '12px' }}>{unit.lessons.length} lessons</span>
+                </div>
               </div>
               {unit.lessons.map(lesson => (
                 <div key={lesson.id} style={styles.lessonRow}>

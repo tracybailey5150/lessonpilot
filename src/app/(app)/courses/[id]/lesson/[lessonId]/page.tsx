@@ -125,6 +125,9 @@ export default function LessonPage() {
   const [completing, setCompleting] = useState(false)
   const [lessonResources, setLessonResources] = useState<Resource[]>([])
   const [courseVoice, setCourseVoice] = useState('onyx')
+  const [estimatedMinutes, setEstimatedMinutes] = useState(60)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const audio = useAudioPlayer(courseVoice)
   const [driveModeActive, setDriveModeActive] = useState(false)
@@ -190,6 +193,12 @@ export default function LessonPage() {
     setDriveModeActive(true)
   }
 
+  // Study timer
+  useEffect(() => {
+    timerRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [])
+
   // Stop audio when leaving page
   useEffect(() => { return () => { audio.stop() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -207,6 +216,8 @@ export default function LessonPage() {
       if (courseData?.voice_id) setCourseVoice(courseData.voice_id)
 
       const { data: lessonData } = await supabase.from('lessons').select('*').eq('id', lessonId).single()
+
+      if (lessonData?.estimated_minutes) setEstimatedMinutes(lessonData.estimated_minutes)
 
       if (lessonData && !lessonData.content) {
         setGenerating(true)
@@ -502,6 +513,74 @@ export default function LessonPage() {
 
   const slides = lesson ? buildSlides() : []
 
+  // ─── Rich Content Renderer ──────────────────────────────────────────────────
+  const sectionMeta: Record<string, { icon: string; color: string; bg: string; border: string }> = {
+    'OVERVIEW': { icon: '🎯', color: '#38BDF8', bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.2)' },
+    'LEARNING OBJECTIVES': { icon: '✅', color: '#4ADE80', bg: 'rgba(74,222,128,0.06)', border: 'rgba(74,222,128,0.2)' },
+    'PRACTICAL AV SCENARIOS': { icon: '🎬', color: '#F59E0B', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.2)' },
+    'WORKED EXAMPLES': { icon: '🧮', color: '#A78BFA', bg: 'rgba(167,139,250,0.06)', border: 'rgba(167,139,250,0.2)' },
+    'CTS EXAM RELEVANCE': { icon: '🎓', color: '#6366F1', bg: 'rgba(99,102,241,0.06)', border: 'rgba(99,102,241,0.2)' },
+    'KNOWLEDGE CHECK': { icon: '🧪', color: '#EC4899', bg: 'rgba(236,72,153,0.06)', border: 'rgba(236,72,153,0.2)' },
+    'PRACTICAL ASSIGNMENT': { icon: '📝', color: '#14B8A6', bg: 'rgba(20,184,166,0.06)', border: 'rgba(20,184,166,0.2)' },
+    'STUDY NOTES': { icon: '📋', color: '#FBBF24', bg: 'rgba(251,191,36,0.06)', border: 'rgba(251,191,36,0.2)' },
+    'SUMMARY': { icon: '🔁', color: '#818CF8', bg: 'rgba(129,140,248,0.06)', border: 'rgba(129,140,248,0.2)' },
+  }
+
+  function renderStructuredContent(content: string) {
+    // Split on section headers (lines like "OVERVIEW", "LEARNING OBJECTIVES", etc.)
+    const sectionPattern = /^(OVERVIEW|LEARNING OBJECTIVES|PRACTICAL AV SCENARIOS|WORKED EXAMPLES|CTS EXAM RELEVANCE|KNOWLEDGE CHECK|PRACTICAL ASSIGNMENT|STUDY NOTES|SUMMARY|Part \d+[:\s].*)$/m
+    const parts = content.split(/\n*---\n*/)
+    const elements: React.ReactNode[] = []
+
+    for (let pi = 0; pi < parts.length; pi++) {
+      const part = parts[pi].trim()
+      if (!part) continue
+
+      // Check if this part starts with a known section header
+      const lines = part.split('\n')
+      const header = lines[0].trim()
+      const meta = sectionMeta[header]
+
+      if (meta) {
+        const body = lines.slice(1).join('\n').trim()
+        elements.push(
+          <div key={pi} style={{ background: meta.bg, border: `1px solid ${meta.border}`, borderRadius: '12px', padding: '20px 24px', borderLeft: `4px solid ${meta.color}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '16px' }}>{meta.icon}</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{header}</span>
+            </div>
+            <div style={{ fontSize: '15px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>{body}</div>
+          </div>
+        )
+      } else if (header.match(/^Part \d+/i)) {
+        // Part headers get a distinct style
+        const body = lines.slice(1).join('\n').trim()
+        elements.push(
+          <div key={pi} style={{ background: '#0C1220', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '14px' }}>📖</span>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#A78BFA' }}>{header}</span>
+            </div>
+            <div style={{ fontSize: '15px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>{body}</div>
+          </div>
+        )
+      } else {
+        // Generic content block
+        elements.push(
+          <div key={pi} style={{ background: '#0C1220', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '20px 24px' }}>
+            <div style={{ fontSize: '15px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>{part}</div>
+          </div>
+        )
+      }
+    }
+
+    return elements.length > 0 ? elements : (
+      <div style={{ background: '#0C1220', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '24px' }}>
+        <div style={{ fontSize: '15px', lineHeight: 1.8, color: '#E2E8F0', whiteSpace: 'pre-wrap' }}>{content}</div>
+      </div>
+    )
+  }
+
   return (
     <div style={s.page}>
       {driveModeActive && lesson && (
@@ -551,7 +630,19 @@ export default function LessonPage() {
           <span>/</span>
           <span style={{ color: '#F1F5F9' }}>{lesson.title}</span>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Study Timer */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '20px', padding: '4px 12px' }}>
+            <span style={{ fontSize: '11px', color: '#38BDF8' }}>⏱</span>
+            <span style={{ fontSize: '11px', color: '#38BDF8', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, '0')}
+            </span>
+            <span style={{ fontSize: '11px', color: '#64748B' }}>/ {estimatedMinutes}m</span>
+          </div>
+          {/* Progress bar for time */}
+          <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', background: '#38BDF8', borderRadius: '2px', width: `${Math.min(100, (elapsedSeconds / (estimatedMinutes * 60)) * 100)}%`, transition: 'width 1s linear' }} />
+          </div>
           {audio.isPlaying && (
             <span style={{ fontSize: '11px', color: '#FBBF24', animation: 'pulse 1.5s ease-in-out infinite' }}>
               🔊 Playing
@@ -574,14 +665,10 @@ export default function LessonPage() {
         <h1 style={s.h1}>{lesson.title}</h1>
         {lesson.objective && <p style={s.objective}>🎯 {lesson.objective}</p>}
 
-        {/* Lesson content presented as AI teaching */}
+        {/* Lesson content — richly formatted */}
         {lesson.content ? (
-          <div style={{ background: '#0C1220', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '14px' }}>📖</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lesson</span>
-            </div>
-            <div style={s.content}>{lesson.content}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+            {renderStructuredContent(lesson.content)}
           </div>
         ) : (
           <div style={{ color: '#64748B', padding: '40px', textAlign: 'center' }}>No content generated yet.</div>
