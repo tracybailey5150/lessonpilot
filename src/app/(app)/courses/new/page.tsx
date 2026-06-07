@@ -129,6 +129,11 @@ export default function NewCoursePage() {
     setFileLoading(true)
     setError('')
     try {
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 10 MB.`)
+        setFileLoading(false)
+        return
+      }
       const fileName = file.name.toLowerCase()
       let text = ''
       if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
@@ -142,6 +147,10 @@ export default function NewCoursePage() {
         const fd = new FormData()
         fd.append('file', file)
         const res = await fetch('/api/parse-document', { method: 'POST', body: fd })
+        if (!res.ok) {
+          const errText = await res.text()
+          throw new Error(errText || `Upload failed (${res.status})`)
+        }
         const data = await res.json()
         text = data.text || ''
       }
