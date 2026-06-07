@@ -48,6 +48,7 @@ export default function CoursePage() {
   const [shareLink, setShareLink] = useState<string | null>(null)
   const [shareLoading, setShareLoading] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  const [deletingLesson, setDeletingLesson] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -148,6 +149,22 @@ export default function CoursePage() {
     }
   }
 
+
+  async function handleDeleteLesson(lessonId: string) {
+    if (!confirm('Delete this lesson? This cannot be undone.')) return
+    setDeletingLesson(lessonId)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) { router.push('/login'); return }
+    const res = await fetch('/api/lessons/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonId, userId: session.user.id }),
+    })
+    if (res.ok) {
+      setUnits(prev => prev.map(u => ({ ...u, lessons: u.lessons.filter(l => l.id !== lessonId) })))
+    }
+    setDeletingLesson(null)
+  }
 
   const totalLessons = units.reduce((a, u) => a + u.lessons.length, 0)
   const completedLessons = Object.values(progress).filter(s => s === 'completed').length
@@ -275,6 +292,14 @@ export default function CoursePage() {
                   </Link>
                   <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>{lesson.difficulty}</span>
                   {lesson.estimated_minutes && <span style={{ color: '#64748B', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '20px' }}>~{lesson.estimated_minutes}m</span>}
+                  <button
+                    onClick={() => handleDeleteLesson(lesson.id)}
+                    disabled={deletingLesson === lesson.id}
+                    title="Delete lesson"
+                    style={{ color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px 8px', borderRadius: '4px', opacity: deletingLesson === lesson.id ? 0.4 : 0.6, flexShrink: 0 }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>

@@ -39,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { href: '/courses', label: 'My Courses', icon: '📚' },
     { href: '/courses/new', label: 'New Course', icon: '➕' },
+    { href: '/courses/import', label: 'Import Course', icon: '📥' },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
