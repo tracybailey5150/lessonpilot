@@ -532,6 +532,34 @@ export default function LessonPage() {
 
   const slides = lesson ? buildSlides() : []
 
+  // ─── Content + Visuals Interleaved ──────────────────────────────────────────
+  function renderContentWithVisuals(content: string, visualsList: Visual[]) {
+    const contentElements = renderStructuredContent(content)
+    if (!visualsList.length) return contentElements
+
+    // Distribute visuals evenly throughout content
+    const contentArr = Array.isArray(contentElements) ? contentElements : [contentElements]
+    const interval = Math.max(2, Math.floor(contentArr.length / (visualsList.length + 1)))
+    const result: React.ReactNode[] = []
+    let visualIdx = 0
+
+    for (let i = 0; i < contentArr.length; i++) {
+      result.push(contentArr[i])
+      // Insert a visual after every `interval` content blocks
+      if ((i + 1) % interval === 0 && visualIdx < visualsList.length) {
+        result.push(renderVisual(visualsList[visualIdx], 1000 + visualIdx))
+        visualIdx++
+      }
+    }
+    // Append any remaining visuals at the end
+    while (visualIdx < visualsList.length) {
+      result.push(renderVisual(visualsList[visualIdx], 1000 + visualIdx))
+      visualIdx++
+    }
+
+    return result
+  }
+
   // ─── Rich Content Renderer ──────────────────────────────────────────────────
   const sectionMeta: Record<string, { icon: string; color: string; bg: string; border: string }> = {
     'OVERVIEW': { icon: '🎯', color: '#38BDF8', bg: 'rgba(56,189,248,0.06)', border: 'rgba(56,189,248,0.2)' },
@@ -684,23 +712,13 @@ export default function LessonPage() {
         <h1 style={s.h1}>{lesson.title}</h1>
         {lesson.objective && <p style={s.objective}>🎯 {lesson.objective}</p>}
 
-        {/* Lesson content — richly formatted */}
+        {/* Lesson content with visuals interspersed */}
         {lesson.content ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
-            {renderStructuredContent(lesson.content)}
+            {renderContentWithVisuals(lesson.content, visuals)}
           </div>
         ) : (
           <div style={{ color: '#64748B', padding: '40px', textAlign: 'center' }}>No content generated yet.</div>
-        )}
-
-        {/* Visual Aids — tables, flowcharts, comparisons, timelines, concept maps */}
-        {visuals.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>📊</span> Visual Aids
-            </div>
-            {visuals.map((v, i) => renderVisual(v, i))}
-          </div>
         )}
 
         {lesson.examples && (
@@ -881,6 +899,13 @@ export default function LessonPage() {
           <button onClick={handleListen} style={s.btnAudio(audio.isPlaying)}>
             {listenLabel}
           </button>
+          <a
+            href={`/api/lessons/pdf?lessonId=${lessonId}`}
+            download
+            style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.3)', color: '#14B8A6', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', textDecoration: 'none' }}
+          >
+            📄 Study Guide PDF
+          </a>
           <button onClick={handleGotIt} disabled={completing} style={s.btnGreen}>
             {completing ? 'Marking...' : 'I get it ✓'}
           </button>
