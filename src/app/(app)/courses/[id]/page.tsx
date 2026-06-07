@@ -54,8 +54,8 @@ export default function CoursePage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED — demo mode
-      const authId = session?.user?.id ?? 'demo-user'
+      if (!session?.user) { router.push('/login'); return }
+      const authId = session.user.id
 
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
       if (userRec) setUserId(userRec.id)
@@ -113,8 +113,8 @@ export default function CoursePage() {
   async function handleShare() {
     setShareLoading(true)
     const { data: { session } } = await supabase.auth.getSession()
-    // AUTH BYPASSED — demo mode
-    const authId = session?.user?.id ?? 'demo-user'
+    if (!session?.user) { router.push('/login'); return }
+    const authId = session.user.id
     const res = await fetch('/api/courses/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

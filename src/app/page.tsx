@@ -236,11 +236,9 @@ export default function LandingPage() {
         </a>
         <div style={styles.navLinks}>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
-          {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
-          {/* <a href="#pricing" style={styles.navLink}>Pricing</a> */}
-          {/* <Link href="/login" style={styles.btnOutline}>Log in</Link> */}
-          {/* <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link> */}
-          <Link href="/dashboard" style={styles.btnPrimary}>Open Platform</Link>
+          <a href="#pricing" style={styles.navLink}>Pricing</a>
+          <Link href="/login" style={styles.btnOutline}>Log in</Link>
+          <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link>
         </div>
       </nav>
 
@@ -306,8 +304,6 @@ export default function LandingPage() {
 
       <div style={styles.divider} />
 
-      {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
-      {/*
       <section id="pricing" style={styles.section}>
         <h2 style={styles.sectionTitle}>Simple, transparent pricing</h2>
         <p style={styles.sectionSubtitle}>Start free. Scale when you&apos;re ready.</p>
@@ -350,15 +346,15 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      */}
 
       {/* Footer */}
       <footer style={styles.footer}>
         <div style={{ marginBottom: '12px' }}>🎓 <strong>LessonPilot.org</strong></div>
         <div>AI-powered teaching that adapts to you.</div>
         <div style={{ marginTop: '16px', display: 'flex', gap: '24px', justifyContent: 'center' }}>
-          {/* HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION */}
-          <Link href="/dashboard" style={{ color: '#64748B', textDecoration: 'none' }}>Open Platform</Link>
+          <Link href="/login" style={{ color: '#64748B', textDecoration: 'none' }}>Log in</Link>
+          <Link href="/signup" style={{ color: '#64748B', textDecoration: 'none' }}>Sign up</Link>
+          <a href="#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</a>
         </div>
         <div style={{ marginTop: '24px', color: '#374151' }}>© 2026 LessonPilot.org — All rights reserved</div>
       </footer>

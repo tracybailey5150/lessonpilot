@@ -101,13 +101,13 @@ export default function ResourcesPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED — demo mode
-      setToken(session?.access_token ?? 'demo-token')
+      if (!session?.user) { router.push('/login'); return }
+      setToken(session.access_token)
 
       const { data: courseData } = await supabase.from('courses').select('id, title').eq('id', courseId).single()
       setCourse(courseData)
 
-      await fetchResources(session?.access_token ?? 'demo-token')
+      await fetchResources(session.access_token)
       setLoading(false)
     }
     load()

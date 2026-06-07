@@ -196,8 +196,8 @@ export default function LessonPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED — demo mode
-      const authId = session?.user?.id ?? 'demo-user'
+      if (!session?.user) { router.push('/login'); return }
+      const authId = session.user.id
 
       const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
       if (userRec) setUserId(userRec.id)
@@ -227,7 +227,7 @@ export default function LessonPage() {
       }
 
       if (userRec) {
-        const token = session?.access_token ?? 'demo-token'
+        const token = session!.access_token
         const resResp = await fetch(`/api/resources?courseId=${courseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })

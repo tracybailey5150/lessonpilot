@@ -56,10 +56,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED — demo mode
-      const authUser = session?.user ?? { id: 'demo-user', email: 'demo@lessonpilot.org', user_metadata: { full_name: 'Demo User' } }
-      setUser({ email: (authUser as any).email ?? 'demo@lessonpilot.org', full_name: (authUser as any).user_metadata?.full_name ?? 'Demo User' })
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', (authUser as any).id).single()
+      if (!session?.user) { router.push('/login'); return }
+      const authUser = session.user
+      setUser({ email: authUser.email ?? '', full_name: authUser.user_metadata?.full_name ?? '' })
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authUser.id).single()
       if (userRec) {
         const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
         setCourses(coursesData ?? [])
@@ -79,8 +79,8 @@ export default function DashboardPage() {
       const code = url.searchParams.get('code')
       if (!code) { setAddResult({ msg: 'Invalid share link', ok: false }); setAddingCourse(false); return }
       const { data: { session } } = await supabase.auth.getSession()
-      // AUTH BYPASSED — demo mode
-      const userId = session?.user?.id ?? 'demo-user'
+      if (!session?.user) { router.push('/login'); return }
+      const userId = session.user.id
       const res = await fetch(`/api/courses/share?code=${code}&userId=${userId}`)
       const data = await res.json()
       if (data.status === 'claimed') { setAddResult({ msg: 'Course added!', ok: true }); router.push(`/courses/${data.courseId}`) }

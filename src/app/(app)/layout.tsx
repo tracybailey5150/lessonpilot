@@ -15,8 +15,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // AUTH BYPASSED — demo mode
-      setUserEmail(session?.user?.email ?? 'demo@lessonpilot.org')
+      if (!session?.user) {
+        router.push('/login')
+        return
+      }
+      setUserEmail(session.user.email ?? '')
     })
   }, [router])
 
@@ -34,8 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { href: '/courses', label: 'My Courses', icon: '📚' },
     { href: '/courses/new', label: 'New Course', icon: '➕' },
-    // HIDDEN FOR DEMO — RE-ENABLE AFTER PRESENTATION
-    // { href: '/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
   const ff = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"

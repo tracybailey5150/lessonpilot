@@ -33,8 +33,13 @@ function SharedCoursePage() {
       if (previewData.error) { setStatus('error'); setError(previewData.error); return }
       setCourseInfo(previewData)
 
-      // AUTH BYPASSED — demo mode
-      setStatus('preview')
+      // Check if user is logged in — show login prompt if not
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        setStatus('login')
+      } else {
+        setStatus('preview')
+      }
     }
     load()
   }, [code])
@@ -42,8 +47,8 @@ function SharedCoursePage() {
   const handleClaim = async () => {
     setStatus('claiming')
     const { data: { session } } = await supabase.auth.getSession()
-    // AUTH BYPASSED — demo mode
-    const authId = session?.user?.id ?? 'demo-user'
+    if (!session?.user) { setStatus('login'); return }
+    const authId = session.user.id
 
     const res = await fetch(`/api/courses/share?code=${code}&userId=${authId}`)
     const data = await res.json()

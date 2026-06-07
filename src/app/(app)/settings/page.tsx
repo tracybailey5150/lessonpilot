@@ -28,9 +28,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      // AUTH BYPASSED — demo mode
-      const authId = session?.user?.id ?? 'demo-user'
-      const authEmail = session?.user?.email ?? 'demo@lessonpilot.org'
+      if (!session?.user) { router.push('/login'); return }
+      const authId = session.user.id
+      const authEmail = session.user.email ?? ''
 
       const { data: rec } = await supabase
         .from('users')
