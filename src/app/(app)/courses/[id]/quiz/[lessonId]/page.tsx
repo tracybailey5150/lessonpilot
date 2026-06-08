@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+
+const Calculator = dynamic(() => import('@/components/Calculator'), { ssr: false })
 
 // ─── Audio Player ────────────────────────────────────────────────────────────
 function useAudioPlayer() {
@@ -61,6 +64,7 @@ export default function QuizPage() {
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ score: number; feedback: string[]; passed: boolean } | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [calcOpen, setCalcOpen] = useState(false)
 
   const audio = useAudioPlayer()
   useEffect(() => { return () => window.speechSynthesis?.cancel() }, [])
@@ -206,12 +210,19 @@ export default function QuizPage() {
 
   return (
     <div style={s.page}>
+      {calcOpen && <Calculator onClose={() => setCalcOpen(false)} />}
       <header style={s.header}>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <Link href={`/courses/${courseId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Course</Link>
           <Link href={`/courses/${courseId}/lesson/${lessonId}`} style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>← Lesson</Link>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => setCalcOpen(o => !o)}
+            style={{ background: calcOpen ? 'rgba(56,189,248,0.2)' : 'rgba(56,189,248,0.08)', border: `1px solid ${calcOpen ? 'rgba(56,189,248,0.6)' : 'rgba(56,189,248,0.2)'}`, color: '#38BDF8', borderRadius: '6px', padding: '8px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            🧮
+          </button>
           <button
             style={s.btnAudio(audio.isPlaying)}
             onClick={() => {

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import dynamic from 'next/dynamic'
 
 const DriveMode = dynamic(() => import('@/components/DriveMode'), { ssr: false })
+const Calculator = dynamic(() => import('@/components/Calculator'), { ssr: false })
 
 interface Resource {
   id: string
@@ -133,6 +134,7 @@ export default function LessonPage() {
 
   const audio = useAudioPlayer(courseVoice)
   const [driveModeActive, setDriveModeActive] = useState(false)
+  const [calcOpen, setCalcOpen] = useState(false)
 
   // Slideshow mode
   const [slideMode, setSlideMode] = useState(false)
@@ -784,6 +786,9 @@ export default function LessonPage() {
         )}
       </main>
 
+      {/* ── Calculator Panel ── */}
+      {calcOpen && <Calculator onClose={() => setCalcOpen(false)} />}
+
       {/* ── Q&A Chat Panel ── */}
       {qaOpen && (
         <div style={{
@@ -892,6 +897,9 @@ export default function LessonPage() {
             style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#A78BFA', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
           >
             📽️ Slides
+          </button>
+          <button onClick={() => setCalcOpen(o => !o)} style={{ background: calcOpen ? 'rgba(56,189,248,0.2)' : 'rgba(56,189,248,0.08)', border: `1px solid ${calcOpen ? 'rgba(56,189,248,0.6)' : 'rgba(56,189,248,0.2)'}`, color: '#38BDF8', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
+            {calcOpen ? '✕ Calculator' : '🧮 Calculator'}
           </button>
           <button onClick={() => setQaOpen(o => !o)} style={{ background: qaOpen ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.08)', border: `1px solid ${qaOpen ? 'rgba(99,102,241,0.6)' : 'rgba(99,102,241,0.2)'}`, color: '#A78BFA', borderRadius: '8px', padding: '11px 22px', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>
             {qaOpen ? '✕ Close Q&A' : '❓ Ask Instructor'}
