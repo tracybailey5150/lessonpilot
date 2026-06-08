@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resetMode, setResetMode] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+
+  // DEMO MODE: skip login for presentation
+  useEffect(() => { router.push('/dashboard') }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
