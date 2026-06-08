@@ -15,14 +15,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
+    // DEMO MODE: bypass auth for presentation
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) {
-        router.push('/login')
-      } else {
+      if (session?.user) {
         setUserEmail(session.user.email ?? '')
+      } else {
+        setUserEmail('demo@lessonpilot.org')
       }
       setAuthChecked(true)
     }).catch(() => {
+      setUserEmail('demo@lessonpilot.org')
       setAuthChecked(true)
     })
   }, [])
