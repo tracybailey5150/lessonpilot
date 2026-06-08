@@ -18,12 +18,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session?.user) {
         router.push('/login')
-        return
+      } else {
+        setUserEmail(session.user.email ?? '')
       }
-      setUserEmail(session.user.email ?? '')
+      setAuthChecked(true)
+    }).catch(() => {
       setAuthChecked(true)
     })
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
