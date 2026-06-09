@@ -53,63 +53,34 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) { router.push('/login'); return }
-      const authId = session.user.id
+    // DEMO MODE: load via server-side API proxy (avoids browser DNS issues)
+    fetch(`/api/demo-data?courseId=${courseId}`)
+      .then(r => r.json())
+      .then(data => {
+        setCourse(data.course ?? null)
+        setUserId(data.userId ?? null)
 
-      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authId).single()
-      if (userRec) setUserId(userRec.id)
+        const unitsWithLessons = (data.units ?? []).map((unit: any) => ({
+          ...unit,
+          lessons: (data.lessons ?? []).filter((l: any) => l.unit_id === unit.id),
+        }))
+        setUnits(unitsWithLessons)
 
-      const { data: courseData } = await supabase.from('courses').select('*').eq('id', courseId).single()
-      setCourse(courseData)
-
-      const { data: unitsData } = await supabase.from('curriculum_units').select('*').eq('course_id', courseId).order('order_index')
-      const { data: lessonsData } = await supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index')
-
-      const unitsWithLessons = (unitsData ?? []).map(unit => ({
-        ...unit,
-        lessons: (lessonsData ?? []).filter(l => l.unit_id === unit.id),
-      }))
-      setUnits(unitsWithLessons)
-
-      if (userRec) {
-        const { data: progressData } = await supabase.from('progress').select('lesson_id, status, score').eq('user_id', userRec.id).eq('course_id', courseId)
         const progressMap: Record<string, string> = {}
         const scoresMap: Record<string, number> = {}
-        for (const p of progressData ?? []) {
+        for (const p of data.progress ?? []) {
           progressMap[p.lesson_id] = p.status
           if (p.score != null) scoresMap[p.lesson_id] = p.score
         }
         setProgress(progressMap)
         setScores(scoresMap)
-      }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [courseId])
 
-      setLoading(false)
-    }
-    load()
-  }, [courseId, router])
-
-  // Poll for lesson generation progress
-  useEffect(() => {
-    if (!courseId || loading) return
-    let cancelled = false
-
-    async function checkGeneration() {
-      const { data: allLessons } = await supabase.from('lessons').select('id, content').eq('course_id', courseId)
-      if (cancelled || !allLessons) return
-      const total = allLessons.length
-      const ready = allLessons.filter(l => l.content).length
-      if (ready < total) {
-        setGeneratingCount({ ready, total })
-        setTimeout(checkGeneration, 5000) // poll every 5s
-      } else {
-        setGeneratingCount(null)
-      }
-    }
-    checkGeneration()
-    return () => { cancelled = true }
-  }, [courseId, loading])
+  // DEMO MODE: skip generation polling (requires client-side Supabase)
+  useEffect(() => { setGeneratingCount(null) }, [])
 
   async function handleShare() {
     setShareLoading(true)
