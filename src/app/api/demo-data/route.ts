@@ -12,6 +12,7 @@ function getAdmin() {
 export async function GET(req: NextRequest) {
   const supabase = getAdmin()
   const courseId = req.nextUrl.searchParams.get('courseId')
+  const lessonId = req.nextUrl.searchParams.get('lessonId')
 
   // Load Tracy's user record
   const { data: userRec } = await supabase
@@ -22,6 +23,22 @@ export async function GET(req: NextRequest) {
 
   if (!userRec) {
     return NextResponse.json({ courses: [], progress: [] })
+  }
+
+  // If lessonId provided, return single lesson data
+  if (lessonId && courseId) {
+    const [{ data: lesson }, { data: courseData }, { data: resources }] = await Promise.all([
+      supabase.from('lessons').select('*').eq('id', lessonId).single(),
+      supabase.from('courses').select('voice_id').eq('id', courseId).single(),
+      supabase.from('course_resources').select('*').eq('course_id', courseId).eq('lesson_id', lessonId),
+    ])
+
+    return NextResponse.json({
+      lesson: lesson ?? null,
+      voiceId: courseData?.voice_id ?? 'onyx',
+      resources: resources ?? [],
+      userId: userRec.id,
+    })
   }
 
   // If courseId provided, return course detail data
