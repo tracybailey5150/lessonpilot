@@ -54,24 +54,10 @@ export default function DashboardPage() {
   const [showShareInput, setShowShareInput] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      // DEMO MODE: bypass auth for presentation
-      const authUser = session?.user
-      setUser({ email: authUser?.email ?? 'demo@lessonpilot.org', full_name: authUser?.user_metadata?.full_name ?? 'Demo User' })
-      if (authUser) {
-        const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', authUser.id).single()
-        if (userRec) {
-          const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
-          setCourses(coursesData ?? [])
-          const { data: progressData } = await supabase.from('progress').select('course_id, lesson_id, status, score').eq('user_id', userRec.id)
-          setProgress(progressData ?? [])
-        }
-      }
-      setLoading(false)
-    }
-    load()
-  }, [router])
+    // DEMO MODE: skip all Supabase calls for presentation
+    setUser({ email: 'demo@lessonpilot.org', full_name: 'Demo User' })
+    setLoading(false)
+  }, [])
 
   const handleAddByUrl = async () => {
     if (!shareUrl.trim()) return

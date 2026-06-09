@@ -15,17 +15,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserEmail(session.user.email ?? '')
-        setAuthChecked(true)
-      } else {
-        router.push('/login')
-      }
-    }).catch(() => {
-      router.push('/login')
-    })
-  }, [router])
+    // DEMO MODE: bypass auth for presentation — skip Supabase call entirely
+    setUserEmail('demo@lessonpilot.org')
+    setAuthChecked(true)
+  }, [])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
