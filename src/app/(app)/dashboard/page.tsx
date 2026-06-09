@@ -54,9 +54,16 @@ export default function DashboardPage() {
   const [showShareInput, setShowShareInput] = useState(false)
 
   useEffect(() => {
-    // DEMO MODE: skip all Supabase calls for presentation
-    setUser({ email: 'demo@lessonpilot.org', full_name: 'Demo User' })
-    setLoading(false)
+    // DEMO MODE: load data via server-side API proxy (avoids browser DNS issues with Supabase)
+    setUser({ email: 'tracybailey5150@icloud.com', full_name: 'Tracy Bailey' })
+    fetch('/api/demo-data')
+      .then(r => r.json())
+      .then(data => {
+        setCourses(data.courses ?? [])
+        setProgress(data.progress ?? [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
   const handleAddByUrl = async () => {
