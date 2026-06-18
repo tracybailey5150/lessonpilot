@@ -13,6 +13,7 @@ interface Course {
   course_format?: string
   duration_days?: number
   created_at: string
+  lesson_count?: number
 }
 
 interface ProgressItem {
@@ -69,7 +70,13 @@ export default function DashboardPage() {
       const { data: progressData } = await supabase
         .from('progress').select('course_id, lesson_id, status, score').eq('user_id', userRec.id)
 
-      setCourses(coursesData ?? [])
+      // Fetch lesson counts per course
+      const enriched = await Promise.all((coursesData ?? []).map(async (c) => {
+        const { count } = await supabase.from('lessons').select('*', { count: 'exact', head: true }).eq('course_id', c.id)
+        return { ...c, lesson_count: count ?? 0 }
+      }))
+
+      setCourses(enriched)
       setProgress(progressData ?? [])
       setLoading(false)
     }
@@ -98,7 +105,8 @@ export default function DashboardPage() {
   const getStats = (courseId: string) => {
     const items = progress.filter(p => p.course_id === courseId)
     const completed = items.filter(p => p.status === 'completed').length
-    const total = items.length
+    const course = courses.find(c => c.id === courseId)
+    const total = course?.lesson_count || items.length || 0
     const scores = items.filter(p => p.score != null).map(p => p.score!)
     const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
     return { completed, total, pct: total > 0 ? Math.round((completed / total) * 100) : 0, avgScore }
