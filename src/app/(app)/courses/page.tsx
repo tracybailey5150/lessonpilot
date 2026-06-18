@@ -24,16 +24,30 @@ export default function CoursesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    // DEMO MODE: load via server-side API proxy (avoids browser DNS issues)
-    fetch('/api/demo-data')
-      .then(r => r.json())
-      .then(data => {
-        setCourses(data.courses ?? [])
-        setUserId(data.userId ?? null)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
+    async function loadData() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/login'); return }
+
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+      if (!userRec) { setLoading(false); return }
+      setUserId(userRec.id)
+
+      const { data: coursesData } = await supabase
+        .from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
+
+      const enriched = await Promise.all((coursesData ?? []).map(async (c) => {
+        const [{ count: lessonCount }, { count: completedCount }] = await Promise.all([
+          supabase.from('lessons').select('*', { count: 'exact', head: true }).eq('course_id', c.id),
+          supabase.from('progress').select('*', { count: 'exact', head: true }).eq('course_id', c.id).eq('user_id', userRec.id).eq('status', 'completed'),
+        ])
+        return { ...c, lesson_count: lessonCount ?? 0, completed_count: completedCount ?? 0 }
+      }))
+
+      setCourses(enriched)
+      setLoading(false)
+    }
+    loadData()
+  }, [router])
 
   async function deleteCourse(courseId: string) {
     setDeletingId(courseId)

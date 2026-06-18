@@ -14,8 +14,11 @@ export default function LoginPage() {
   const [resetMode, setResetMode] = useState(false)
   const [resetSent, setResetSent] = useState(false)
 
-  // DEMO MODE: skip login for presentation
-  useEffect(() => { router.push('/dashboard') }, [router])
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) router.push('/dashboard')
+    })
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

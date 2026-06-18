@@ -53,34 +53,47 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // DEMO MODE: load via server-side API proxy (avoids browser DNS issues)
-    fetch(`/api/demo-data?courseId=${courseId}`)
-      .then(r => r.json())
-      .then(data => {
-        setCourse(data.course ?? null)
-        setUserId(data.userId ?? null)
+    async function loadData() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/login'); return }
 
-        const unitsWithLessons = (data.units ?? []).map((unit: any) => ({
-          ...unit,
-          lessons: (data.lessons ?? []).filter((l: any) => l.unit_id === unit.id),
-        }))
-        setUnits(unitsWithLessons)
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+      if (!userRec) { setLoading(false); return }
+      setUserId(userRec.id)
 
-        const progressMap: Record<string, string> = {}
-        const scoresMap: Record<string, number> = {}
-        for (const p of data.progress ?? []) {
-          progressMap[p.lesson_id] = p.status
-          if (p.score != null) scoresMap[p.lesson_id] = p.score
-        }
-        setProgress(progressMap)
-        setScores(scoresMap)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [courseId])
+      const [{ data: courseData }, { data: unitsData }, { data: lessonsData }, { data: progressData }] = await Promise.all([
+        supabase.from('courses').select('*').eq('id', courseId).single(),
+        supabase.from('curriculum_units').select('*').eq('course_id', courseId).order('order_index'),
+        supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
+        supabase.from('progress').select('lesson_id, status, score').eq('user_id', userRec.id).eq('course_id', courseId),
+      ])
 
-  // DEMO MODE: skip generation polling (requires client-side Supabase)
-  useEffect(() => { setGeneratingCount(null) }, [])
+      setCourse(courseData ?? null)
+
+      const unitsWithLessons = (unitsData ?? []).map((unit: any) => ({
+        ...unit,
+        lessons: (lessonsData ?? []).filter((l: any) => l.unit_id === unit.id),
+      }))
+      setUnits(unitsWithLessons)
+
+      const progressMap: Record<string, string> = {}
+      const scoresMap: Record<string, number> = {}
+      for (const p of progressData ?? []) {
+        progressMap[p.lesson_id] = p.status
+        if (p.score != null) scoresMap[p.lesson_id] = p.score
+      }
+      setProgress(progressMap)
+      setScores(scoresMap)
+
+      // Check for generating lessons
+      const generating = (lessonsData ?? []).filter((l: any) => !l.content)
+      if (generating.length > 0) {
+        setGeneratingCount({ ready: (lessonsData ?? []).length - generating.length, total: (lessonsData ?? []).length })
+      }
+      setLoading(false)
+    }
+    loadData()
+  }, [courseId, router])
 
   async function handleShare() {
     setShareLoading(true)

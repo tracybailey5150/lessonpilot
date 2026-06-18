@@ -54,17 +54,27 @@ export default function DashboardPage() {
   const [showShareInput, setShowShareInput] = useState(false)
 
   useEffect(() => {
-    // DEMO MODE: load data via server-side API proxy (avoids browser DNS issues with Supabase)
-    setUser({ email: 'tracybailey5150@icloud.com', full_name: 'Tracy Bailey' })
-    fetch('/api/demo-data')
-      .then(r => r.json())
-      .then(data => {
-        setCourses(data.courses ?? [])
-        setProgress(data.progress ?? [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
+    async function loadData() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/login'); return }
+      setUser({ email: session.user.email ?? '', full_name: session.user.user_metadata?.full_name })
+
+      const userId = session.user.id
+      const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', userId).single()
+      if (!userRec) { setLoading(false); return }
+
+      const { data: coursesData } = await supabase
+        .from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
+
+      const { data: progressData } = await supabase
+        .from('progress').select('course_id, lesson_id, status, score').eq('user_id', userRec.id)
+
+      setCourses(coursesData ?? [])
+      setProgress(progressData ?? [])
+      setLoading(false)
+    }
+    loadData()
+  }, [router])
 
   const handleAddByUrl = async () => {
     if (!shareUrl.trim()) return

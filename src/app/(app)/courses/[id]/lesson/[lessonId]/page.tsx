@@ -207,16 +207,24 @@ export default function LessonPage() {
   useEffect(() => { return () => { audio.stop() } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // DEMO MODE: load via server-side API proxy (avoids browser DNS issues)
     async function load() {
       try {
-        const res = await fetch(`/api/demo-data?courseId=${courseId}&lessonId=${lessonId}`)
-        const data = await res.json()
-        setUserId(data.userId ?? null)
-        if (data.voiceId) setCourseVoice(data.voiceId)
-        setLessonResources(data.resources ?? [])
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) { router.push('/login'); return }
 
-        const lessonData = data.lesson
+        const { data: userRec } = await supabase.from('users').select('id').eq('supabase_auth_id', session.user.id).single()
+        if (!userRec) { setLoading(false); return }
+        setUserId(userRec.id)
+
+        const [{ data: lessonData }, { data: courseData }, { data: resources }] = await Promise.all([
+          supabase.from('lessons').select('*').eq('id', lessonId).single(),
+          supabase.from('courses').select('voice_id').eq('id', courseId).single(),
+          supabase.from('course_resources').select('*').eq('course_id', courseId).eq('lesson_id', lessonId),
+        ])
+
+        if (courseData?.voice_id) setCourseVoice(courseData.voice_id)
+        setLessonResources(resources ?? [])
+
         if (lessonData?.estimated_minutes) setEstimatedMinutes(lessonData.estimated_minutes)
 
         if (lessonData && !lessonData.content) {
@@ -225,7 +233,7 @@ export default function LessonPage() {
             const genRes = await fetch('/api/lessons/generate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lessonId, userId: data.userId }),
+              body: JSON.stringify({ lessonId, userId: userRec.id }),
             })
             const generated = await genRes.json()
             setLesson(generated.lesson || lessonData)
@@ -238,13 +246,11 @@ export default function LessonPage() {
         }
 
         // Mark as in-progress
-        if (data.userId) {
-          fetch('/api/progress/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: data.userId, lessonId, courseId, status: 'in_progress' }),
-          }).catch(() => {})
-        }
+        fetch('/api/progress/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userRec.id, lessonId, courseId, status: 'in_progress' }),
+        }).catch(() => {})
       } catch { /* ignore */ }
       setLoading(false)
     }
