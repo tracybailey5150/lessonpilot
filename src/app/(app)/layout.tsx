@@ -40,6 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/courses', label: 'My Courses', icon: '📚' },
     { href: '/courses/new', label: 'New Course', icon: '➕' },
     { href: '/courses/import', label: 'Import JSON', icon: '📥' },
+    { href: '/catalog', label: 'Course Catalog', icon: '🏪' },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 

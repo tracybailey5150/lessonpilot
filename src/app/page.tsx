@@ -196,6 +196,7 @@ export default function LandingPage() {
           <img src="/lessonpilot-full.png" alt="LessonPilot" style={{ height: '60px', width: 'auto', objectFit: 'contain' }} />
         </a>
         <div style={styles.navLinks}>
+          <Link href="/catalog" style={styles.navLink}>Course Catalog</Link>
           <a href="#how-it-works" style={styles.navLink}>How it works</a>
           <Link href="/login" style={styles.btnOutline}>Log in</Link>
           <Link href="/signup" style={styles.btnPrimary}>Get Started Free</Link>
