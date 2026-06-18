@@ -114,6 +114,16 @@ export default function ImportCoursePage() {
         return
       }
 
+      // Validate required fields before sending
+      if (!payload.title) {
+        setError('JSON is missing a "title" field. This file may not be a course import file.')
+        setImporting(false); setStatus(''); return
+      }
+      if (!payload.lessons || !Array.isArray(payload.lessons) || payload.lessons.length === 0) {
+        setError(`JSON has no "lessons" array. This looks like a "${payload.type || 'data'}" file, not a course import. Use the course import format with modules and lessons.`)
+        setImporting(false); setStatus(''); return
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) { router.push('/login'); return }
 
