@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,25 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async = true
+    script.onload = () => {
+      if (turnstileRef.current && (window as any).turnstile) {
+        (window as any).turnstile.render(turnstileRef.current, {
+          sitekey: '0x4AAAAAADnbosqdyYsmdWMd',
+          callback: (token: string) => setCaptchaToken(token),
+          theme: 'dark',
+        })
+      }
+    }
+    document.head.appendChild(script)
+    return () => { document.head.removeChild(script) }
+  }, [])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,7 +41,7 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName }, captchaToken: captchaToken ?? undefined },
     })
 
     if (error) {
@@ -107,7 +126,8 @@ export default function SignupPage() {
             minLength={8}
             style={s.input}
           />
-          <button type="submit" disabled={loading} style={s.btn}>
+          <div ref={turnstileRef} style={{ marginBottom: '16px' }} />
+          <button type="submit" disabled={loading || !captchaToken} style={s.btn}>
             {loading ? 'Creating account...' : 'Start Learning Free →'}
           </button>
         </form>
