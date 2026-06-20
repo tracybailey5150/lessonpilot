@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const course = lesson.courses as any
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'gpt-5.4',
       messages: [
         {
           role: 'system',
@@ -73,7 +73,7 @@ Student question: ${question}`
         }
       ],
       temperature: 0.5,
-      max_tokens: 600,
+      max_completion_tokens: 600,
     })
 
     const answer = response.choices[0].message.content ?? 'I was unable to generate an answer. Please try again.'

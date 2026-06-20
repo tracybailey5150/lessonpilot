@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
 
       try {
         const res = await openai.chat.completions.create({
-          model: 'gpt-4.1-mini',
+          model: 'gpt-5.4',
           messages: [
             { role: 'system', content: 'You are a study coach. Write a focused review guide for a student who struggled with specific topics. Be encouraging but direct. Use clear explanations, mnemonics, and practice tips. No markdown — use plain text with clear headings.' },
             { role: 'user', content: `Write a targeted study guide for the weak areas in "${ug.unitTitle}".\n\nCourse: ${course.title}\nLevel: ${course.level}\n\nWeak areas:\n${missedContext}\n\nCreate a 400-600 word focused review covering:\n1. Quick recap of the concepts they missed\n2. Why these concepts matter\n3. Memory tricks or mnemonics\n4. 3 practice questions to test themselves` },

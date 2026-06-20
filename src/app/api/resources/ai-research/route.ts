@@ -39,7 +39,7 @@ Include specific facts, numbers, processes, and definitions that appear on the a
 ` : ''
 
     const res = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'gpt-5.4',
       messages: [{
         role: 'user',
         content: `You are a curriculum researcher${isCert ? ' specializing in certification exam preparation' : ''}. For the topic "${topic}" (subject: ${subject}, level: ${level}), provide:
@@ -63,7 +63,7 @@ Return ONLY valid JSON:
 IMPORTANT: Only include URLs from major, reputable domains. Do not invent article URLs — use homepage or search URLs if you are not 100% sure of the exact path.`
       }],
       temperature: 0.5,
-      max_tokens: isCert ? 6000 : 4000,
+      max_completion_tokens: isCert ? 6000 : 4000,
     })
 
     const raw = res.choices[0].message.content || '{}'
