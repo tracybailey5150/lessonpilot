@@ -39,7 +39,7 @@ Include specific facts, numbers, processes, and definitions that appear on the a
 ` : ''
 
     const res = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'gpt-5.5',
       messages: [{
         role: 'user',
         content: `You are a curriculum researcher${isCert ? ' specializing in certification exam preparation' : ''}. For the topic "${topic}" (subject: ${subject}, level: ${level}), provide:

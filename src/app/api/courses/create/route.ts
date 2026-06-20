@@ -125,7 +125,7 @@ Return JSON: { "units": [{ "title": "string", "summary": "string", "lessons": [{
 Maximum 5 units, 4 lessons per unit. Keep it focused and logical.`
 
     const curriculumRes = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5.5",
       messages: [
         {
           role: 'system',
