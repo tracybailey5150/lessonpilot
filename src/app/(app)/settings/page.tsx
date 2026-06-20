@@ -225,8 +225,22 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Custom Course */}
+              <div style={s.planCard(false)}>
+                <div>
+                  <div style={s.planName}>Custom Course Build 🎯</div>
+                  <div style={s.planDesc}>We build your course for you — structured curriculum, lessons, quizzes, study guides, and certification prep tailored to your organization</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={s.planPrice}>$99–$1,500</span>
+                  <a href="mailto:tracybailey5150@icloud.com?subject=Custom%20Course%20Build%20Inquiry" style={{ background: '#0EA5E9', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                    Contact Us →
+                  </a>
+                </div>
+              </div>
+
               <p style={{ color: '#475569', fontSize: '12px', marginTop: '16px' }}>
-                7-day free trial. Cancel anytime. All plans include SSL-encrypted storage and GDPR compliance.
+                7-day free trial on Pro. Cancel anytime. All plans include SSL-encrypted storage and GDPR compliance.
               </p>
             </>
           )}
