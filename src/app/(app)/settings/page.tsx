@@ -218,7 +218,7 @@ export default function SettingsPage() {
                   <div style={s.planDesc}>Everything in Pro · 10 seats · Team dashboards · SSO</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={s.planPrice}>$49/mo</span>
+                  <span style={s.planPrice}>$99/mo</span>
                   <button onClick={() => handleUpgrade('team')} disabled={loading} style={s.upgradeBtn('team')}>
                     {loading ? '...' : 'Upgrade →'}
                   </button>
