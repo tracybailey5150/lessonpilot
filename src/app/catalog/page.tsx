@@ -191,15 +191,9 @@ export default function CatalogPage() {
                       {course.subject && <span>{course.subject}</span>}
                     </div>
 
-                    {/* Footer: Price + CTA */}
+                    {/* Footer: CTA */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div>
-                        {course.price > 0 ? (
-                          <span style={{ fontSize: '22px', fontWeight: 800, color: '#F1F5F9' }}>${course.price}</span>
-                        ) : (
-                          <span style={{ fontSize: '16px', fontWeight: 700, color: '#22C55E' }}>Free</span>
-                        )}
-                      </div>
+                      <span style={{ fontSize: '12px', color: '#475569' }}>Included with Pro plan</span>
                       <Link
                         href="/signup"
                         className="cat-btn"
@@ -211,7 +205,7 @@ export default function CatalogPage() {
                           fontSize: '13px', fontWeight: 600,
                         }}
                       >
-                        {course.price > 0 ? 'Enroll Now' : 'Start Free'}
+                        Start Learning
                       </Link>
                     </div>
                   </div>
