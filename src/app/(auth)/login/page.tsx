@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [resetMode, setResetMode] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const turnstileRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async = true
+    script.onload = () => {
+      if (turnstileRef.current && (window as any).turnstile) {
+        (window as any).turnstile.render(turnstileRef.current, {
+          sitekey: '0x4AAAAAADnbosqdyYsmdWMd',
+          callback: (token: string) => setCaptchaToken(token),
+          theme: 'dark',
+        })
+      }
+    }
+    document.head.appendChild(script)
+    return () => { try { document.head.removeChild(script) } catch {} }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -25,7 +44,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken: captchaToken ?? undefined } })
     if (error) {
       setError(error.message)
       setLoading(false)
@@ -114,7 +133,8 @@ export default function LoginPage() {
           <span style={s.forgotLink} onClick={() => { setResetMode(true); setError('') }}>
             Forgot password?
           </span>
-          <button type="submit" disabled={loading} style={s.btn}>
+          <div ref={turnstileRef} style={{ marginBottom: '16px' }} />
+          <button type="submit" disabled={loading || !captchaToken} style={s.btn}>
             {loading ? 'Signing in...' : 'Sign In →'}
           </button>
         </form>
