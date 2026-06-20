@@ -30,7 +30,7 @@ EXAM PREP MODE: Generate questions that mirror REAL certification exam questions
 ` : ''
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4-mini",
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: 'system',
