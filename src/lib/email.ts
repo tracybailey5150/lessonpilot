@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const NOTIFY = 'tracy@hookvault.app'
+const NOTIFY = 'tracybailey5150@icloud.com'
 
 function from(appName: string) {
   return `Tracy Bailey <tracy@hookvault.app>`
