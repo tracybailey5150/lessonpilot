@@ -1,9 +1,9 @@
 import { Resend } from 'resend'
 
-const NOTIFY = 'tracybailey5150@icloud.com'
+const NOTIFY = 'tracy@hookvault.app'
 
 function from(appName: string) {
-  return `${appName} <noreply@hookvault.app>`
+  return `Tracy Bailey <tracy@hookvault.app>`
 }
 
 export async function notifyNewSignup(appName: string, email: string, name?: string) {
