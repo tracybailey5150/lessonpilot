@@ -11,7 +11,7 @@ function getStripe() {
 
 const PLANS = {
   pro: { amount: 1900, name: 'LessonPilot Pro', interval: 'month' as const },
-  team: { amount: 4900, name: 'LessonPilot Team', interval: 'month' as const },
+  team: { amount: 9900, name: 'LessonPilot Team', interval: 'month' as const },
 }
 
 async function getOrCreatePrice(planKey: keyof typeof PLANS): Promise<string> {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { planKey, userId, userEmail } = await req.json()
 
     const priceId = await getOrCreatePrice(planKey as keyof typeof PLANS)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lessonpilot-tracy-baileys-projects.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lessonpilot.org'
 
     const session = await getStripe().checkout.sessions.create({
       mode: 'subscription',
