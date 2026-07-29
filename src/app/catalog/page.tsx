@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 interface Course {
   id: string
@@ -19,6 +21,12 @@ interface Course {
   preview_image: string | null
   lessonCount: number
   moduleCount: number
+}
+
+interface UserAccess {
+  role: string
+  subscription_status: string
+  enrolledCourseIds: string[]
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -46,21 +54,105 @@ const TIER_BADGE: Record<string, { bg: string; color: string; label: string }> =
   pro: { bg: 'rgba(167,139,250,0.1)', color: '#A78BFA', label: 'Pro' },
 }
 
-export default function CatalogPage() {
+export default function CatalogPageWrapper() {
+  return (
+    <Suspense>
+      <CatalogPage />
+    </Suspense>
+  )
+}
+
+function CatalogPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [authId, setAuthId] = useState<string | null>(null)
+  const [access, setAccess] = useState<UserAccess | null>(null)
+  const [enrolling, setEnrolling] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const searchParams = useSearchParams()
+
+  const loadAccess = useCallback(async (uid: string) => {
+    const res = await fetch(`/api/catalog/enroll?authId=${uid}`)
+    if (res.ok) {
+      const data = await res.json()
+      setAccess(data)
+    }
+  }, [])
 
   useEffect(() => {
+    // Load courses
     fetch('/api/catalog')
       .then(r => r.json())
       .then(d => { setCourses(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+
+    // Check auth
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        setAuthId(session.user.id)
+        await loadAccess(session.user.id)
+      }
+    })
+  }, [loadAccess])
+
+  // Handle post-purchase enrollment
+  useEffect(() => {
+    const enrolledId = searchParams.get('enrolled')
+    if (enrolledId && authId) {
+      setToast({ msg: 'Course purchased! You now have access.', ok: true })
+      loadAccess(authId)
+      setTimeout(() => setToast(null), 4000)
+    }
+  }, [searchParams, authId, loadAccess])
+
+  const handleEnroll = async (courseId: string) => {
+    if (!authId) {
+      window.location.href = '/signup'
+      return
+    }
+    setEnrolling(courseId)
+    try {
+      const res = await fetch('/api/catalog/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authId, courseId }),
+      })
+      const data = await res.json()
+
+      if (data.status === 'enrolled' || data.status === 'already_enrolled') {
+        setToast({ msg: data.status === 'already_enrolled' ? 'Already in your library!' : 'Course added to your library!', ok: true })
+        await loadAccess(authId)
+      } else if (data.status === 'checkout' && data.url) {
+        window.location.href = data.url
+        return
+      } else if (data.status === 'upgrade_required') {
+        window.location.href = '/settings'
+        return
+      } else {
+        setToast({ msg: data.error || 'Something went wrong', ok: false })
+      }
+    } catch {
+      setToast({ msg: 'Failed to enroll', ok: false })
+    }
+    setEnrolling(null)
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  const isEnrolled = (courseId: string) => access?.enrolledCourseIds?.includes(courseId)
+  const hasFullAccess = access?.role === 'owner' || ['active', 'trialing'].includes(access?.subscription_status ?? '')
+  const isLoggedIn = !!authId
 
   const categories = ['all', ...Array.from(new Set(courses.map(c => c.category))).filter(Boolean)]
   const filtered = filter === 'all' ? courses : courses.filter(c => c.category === filter)
-  const featured = courses.filter(c => c.is_featured)
+
+  const getButtonState = (course: Course) => {
+    if (!isLoggedIn) return { label: 'Start Learning', style: 'cta' as const }
+    if (isEnrolled(course.id)) return { label: 'Go to Course', style: 'enrolled' as const }
+    if (hasFullAccess || course.tier === 'free') return { label: 'Add to Library', style: 'add' as const }
+    if (course.price && Number(course.price) > 0) return { label: `Buy — $${course.price}`, style: 'buy' as const }
+    return { label: 'Upgrade to Access', style: 'upgrade' as const }
+  }
 
   return (
     <div style={{ background: '#070C18', minHeight: '100vh', color: '#F1F5F9', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
@@ -70,6 +162,7 @@ export default function CatalogPage() {
         .cat-card:hover { border-color: rgba(56,189,248,0.3) !important; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(56,189,248,0.08); }
         .cat-btn { transition: all 0.15s; }
         .cat-btn:hover { filter: brightness(1.15); }
+        @keyframes toastIn { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
         @media (max-width: 768px) {
           .cat-hero-title { font-size: 32px !important; }
           .cat-grid { grid-template-columns: 1fr !important; }
@@ -77,6 +170,20 @@ export default function CatalogPage() {
           .cat-content { padding: 0 16px 60px !important; }
         }
       `}</style>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000,
+          background: toast.ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+          border: `1px solid ${toast.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          color: toast.ok ? '#4ADE80' : '#F87171',
+          padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: 600,
+          backdropFilter: 'blur(12px)', animation: 'toastIn 0.2s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
 
       {/* Nav */}
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 40px', borderBottom: '1px solid rgba(255,255,255,0.07)' }} className="cat-nav-inner">
@@ -86,8 +193,19 @@ export default function CatalogPage() {
         </Link>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <Link href="/catalog" style={{ color: '#38BDF8', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>Catalog</Link>
-          <Link href="/login" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>Log In</Link>
-          <Link href="/signup" style={{ background: '#38BDF8', color: '#070C18', padding: '8px 18px', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>Sign Up Free</Link>
+          {isLoggedIn ? (
+            <>
+              <Link href="/dashboard" style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '14px' }}>Dashboard</Link>
+              {access?.role === 'owner' && (
+                <span style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Owner</span>
+              )}
+            </>
+          ) : (
+            <>
+              <Link href="/login" style={{ color: '#64748B', textDecoration: 'none', fontSize: '14px' }}>Log In</Link>
+              <Link href="/signup" style={{ background: '#38BDF8', color: '#070C18', padding: '8px 18px', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>Sign Up Free</Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -102,6 +220,11 @@ export default function CatalogPage() {
         <p style={{ fontSize: '17px', color: '#64748B', lineHeight: 1.6, marginBottom: '8px' }}>
           Professional training courses in AV technology, certifications, and business — built by industry experts with AI-powered learning tools.
         </p>
+        {isLoggedIn && hasFullAccess && (
+          <p style={{ fontSize: '13px', color: '#4ADE80', marginTop: '12px' }}>
+            You have full access — add any course to your library instantly.
+          </p>
+        )}
       </div>
 
       {/* Content */}
@@ -144,19 +267,31 @@ export default function CatalogPage() {
             {filtered.map((course, i) => {
               const levelColor = LEVEL_COLORS[course.level] || '#64748B'
               const tier = TIER_BADGE[course.tier] || TIER_BADGE.free
+              const btn = getButtonState(course)
+              const enrolled = isEnrolled(course.id)
+              const isLoading = enrolling === course.id
+
+              const btnStyles: Record<string, React.CSSProperties> = {
+                cta: { background: course.is_featured ? '#38BDF8' : 'rgba(56,189,248,0.1)', color: course.is_featured ? '#070C18' : '#38BDF8', border: course.is_featured ? 'none' : '1px solid rgba(56,189,248,0.2)' },
+                enrolled: { background: 'rgba(34,197,94,0.1)', color: '#4ADE80', border: '1px solid rgba(34,197,94,0.2)' },
+                add: { background: '#38BDF8', color: '#070C18', border: 'none' },
+                buy: { background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff', border: 'none' },
+                upgrade: { background: 'rgba(99,102,241,0.1)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.2)' },
+              }
+
               return (
                 <div
                   key={course.id}
                   className="cat-card"
                   style={{
-                    background: '#0D1424', border: `1px solid ${course.is_featured ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.06)'}`,
+                    background: '#0D1424', border: `1px solid ${course.is_featured ? 'rgba(56,189,248,0.15)' : enrolled ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)'}`,
                     borderRadius: '14px', overflow: 'hidden',
                     animation: `fadeUp ${0.2 + i * 0.05}s ease`,
                     display: 'flex', flexDirection: 'column',
                   }}
                 >
                   {/* Card top accent */}
-                  <div style={{ height: '3px', background: course.is_featured ? 'linear-gradient(90deg, #38BDF8, #6366F1)' : 'rgba(255,255,255,0.04)' }} />
+                  <div style={{ height: '3px', background: enrolled ? 'linear-gradient(90deg, #22C55E, #4ADE80)' : course.is_featured ? 'linear-gradient(90deg, #38BDF8, #6366F1)' : 'rgba(255,255,255,0.04)' }} />
 
                   <div style={{ padding: '22px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {/* Badges row */}
@@ -168,6 +303,9 @@ export default function CatalogPage() {
                       )}
                       {course.is_featured && (
                         <span style={{ background: 'rgba(56,189,248,0.1)', color: '#38BDF8', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '10px' }}>Featured</span>
+                      )}
+                      {enrolled && (
+                        <span style={{ background: 'rgba(34,197,94,0.1)', color: '#4ADE80', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '10px' }}>In Library</span>
                       )}
                     </div>
 
@@ -193,20 +331,31 @@ export default function CatalogPage() {
 
                     {/* Footer: CTA */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ fontSize: '12px', color: '#475569' }}>Included with Pro plan</span>
-                      <Link
-                        href="/signup"
-                        className="cat-btn"
-                        style={{
-                          background: course.is_featured ? '#38BDF8' : 'rgba(56,189,248,0.1)',
-                          color: course.is_featured ? '#070C18' : '#38BDF8',
-                          border: course.is_featured ? 'none' : '1px solid rgba(56,189,248,0.2)',
-                          padding: '9px 20px', borderRadius: '8px', textDecoration: 'none',
-                          fontSize: '13px', fontWeight: 600,
-                        }}
-                      >
-                        Start Learning
-                      </Link>
+                      <span style={{ fontSize: '12px', color: '#475569' }}>
+                        {enrolled ? 'Added to your library' : hasFullAccess ? 'Included with your plan' : course.tier === 'free' ? 'Free course' : `$${course.price}`}
+                      </span>
+                      {enrolled ? (
+                        <Link
+                          href="/dashboard"
+                          className="cat-btn"
+                          style={{ ...btnStyles.enrolled, padding: '9px 20px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}
+                        >
+                          Go to Dashboard
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => handleEnroll(course.id)}
+                          disabled={isLoading}
+                          className="cat-btn"
+                          style={{
+                            ...btnStyles[btn.style],
+                            padding: '9px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                            cursor: isLoading ? 'wait' : 'pointer', opacity: isLoading ? 0.6 : 1,
+                          }}
+                        >
+                          {isLoading ? 'Adding...' : btn.label}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -223,7 +372,11 @@ export default function CatalogPage() {
               Create custom AI-powered courses on any topic. Upload your materials, and LessonPilot generates lessons, quizzes, and study guides automatically.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/signup" className="cat-btn" style={{ background: '#38BDF8', color: '#070C18', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontSize: '15px', fontWeight: 600 }}>Get Started Free</Link>
+              {isLoggedIn ? (
+                <Link href="/courses/new" className="cat-btn" style={{ background: '#38BDF8', color: '#070C18', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontSize: '15px', fontWeight: 600 }}>Create a Course</Link>
+              ) : (
+                <Link href="/signup" className="cat-btn" style={{ background: '#38BDF8', color: '#070C18', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontSize: '15px', fontWeight: 600 }}>Get Started Free</Link>
+              )}
               <Link href="/" className="cat-btn" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#94A3B8', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontSize: '15px', fontWeight: 600 }}>Learn More</Link>
             </div>
           </div>

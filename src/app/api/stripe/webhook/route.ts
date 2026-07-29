@@ -43,8 +43,21 @@ export async function POST(req: NextRequest) {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const userId = obj.subscription_data?.metadata?.userId || obj.metadata?.userId
+        const metadata = obj.metadata || {}
         const customerEmail = obj.customer_email || obj.customer_details?.email || ''
+
+        // Single course purchase
+        if (metadata.type === 'course_purchase' && metadata.courseId) {
+          const { error } = await supabase
+            .from('enrollments')
+            .upsert({ user_id: metadata.userId, course_id: metadata.courseId }, { onConflict: 'user_id,course_id' })
+          console.log('[LP] Course purchase enrolled:', metadata.courseId, 'for user:', metadata.userId, error ? `error: ${error.message}` : 'ok')
+          notifyNewSubscription('LessonPilot', customerEmail, 'Course Purchase', `$${(obj.amount_total / 100).toFixed(2)}`).catch(() => {})
+          break
+        }
+
+        // Subscription checkout
+        const userId = obj.subscription_data?.metadata?.userId || metadata.userId
         const amountTotal = obj.amount_total ? `$${(obj.amount_total / 100).toFixed(2)}/mo` : 'subscription'
 
         await supabase.from('users').update({

@@ -67,11 +67,25 @@ export default function DashboardPage() {
       const { data: coursesData } = await supabase
         .from('courses').select('*').eq('user_id', userRec.id).order('created_at', { ascending: false })
 
+      // Also fetch enrolled catalog courses
+      const { data: enrollments } = await supabase
+        .from('enrollments').select('course_id').eq('user_id', userRec.id)
+      const enrolledIds = (enrollments ?? []).map((e: { course_id: string }) => e.course_id)
+        .filter((id: string) => !(coursesData ?? []).some((c: any) => c.id === id))
+
+      let enrolledCourses: any[] = []
+      if (enrolledIds.length > 0) {
+        const { data } = await supabase.from('courses').select('*').in('id', enrolledIds)
+        enrolledCourses = data ?? []
+      }
+
+      const allCourses = [...(coursesData ?? []), ...enrolledCourses]
+
       const { data: progressData } = await supabase
         .from('progress').select('course_id, lesson_id, status, score').eq('user_id', userRec.id)
 
       // Fetch lesson counts per course
-      const enriched = await Promise.all((coursesData ?? []).map(async (c) => {
+      const enriched = await Promise.all(allCourses.map(async (c) => {
         const { count } = await supabase.from('lessons').select('*', { count: 'exact', head: true }).eq('course_id', c.id)
         return { ...c, lesson_count: count ?? 0 }
       }))
@@ -201,6 +215,7 @@ export default function DashboardPage() {
           {/* Actions */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', animation: 'fadeUp 0.55s ease' }}>
             <Link href="/courses/new" className="c-btn" style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '7px', padding: '9px 18px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>+ New Course</Link>
+            <Link href="/catalog" className="c-btn" style={{ background: 'none', border: '1px solid rgba(56,189,248,0.15)', color: '#38BDF8', borderRadius: '7px', padding: '9px 18px', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}>Browse Catalog</Link>
             <button onClick={() => setShowShareInput(!showShareInput)} className="c-btn" style={{ background: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#4b5574', borderRadius: '7px', padding: '9px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Add Shared Course</button>
           </div>
 
