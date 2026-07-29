@@ -15,7 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         router.push('/login')
       } else {
@@ -23,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setAuthChecked(true)
       }
     })
+    return () => { subscription.unsubscribe() }
   }, [router])
 
   useEffect(() => {

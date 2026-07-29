@@ -9,11 +9,13 @@ interface UserRecord {
   email: string
   subscription_status: string
   stripe_customer_id: string | null
+  role: string
+  access_tier: string
 }
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Free',
-  active: 'Pro',
+  active: 'Active',
   trialing: 'Pro (Trial)',
   past_due: 'Pro (Past Due)',
   canceled: 'Canceled',
@@ -27,23 +29,25 @@ export default function SettingsPage() {
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) { router.push('/login'); return }
       const authId = session.user.id
       const authEmail = session.user.email ?? ''
 
       const { data: rec } = await supabase
         .from('users')
-        .select('id, email, subscription_status, stripe_customer_id')
+        .select('id, email, subscription_status, stripe_customer_id, role, access_tier')
         .eq('supabase_auth_id', authId)
         .single()
 
-      setUserRec(rec ?? { id: authId, email: authEmail, subscription_status: 'free', stripe_customer_id: null })
+      setUserRec(rec ?? { id: authId, email: authEmail, subscription_status: 'free', stripe_customer_id: null, role: 'user', access_tier: 'free' })
       setPageLoading(false)
     })
+    return () => { subscription.unsubscribe() }
   }, [router])
 
-  const isPaid = ['active', 'trialing'].includes(userRec?.subscription_status ?? '')
+  const isOwner = userRec?.role === 'owner' || userRec?.access_tier === 'owner'
+  const isPaid = isOwner || ['active', 'trialing'].includes(userRec?.subscription_status ?? '')
 
   const handleUpgrade = async (planKey: string) => {
     if (!userRec) return
@@ -119,7 +123,7 @@ export default function SettingsPage() {
   )
 
   const status = userRec?.subscription_status ?? 'free'
-  const planLabel = PLAN_LABELS[status] ?? status
+  const planLabel = isOwner ? 'Owner' : (PLAN_LABELS[status] ?? status)
 
   return (
     <div style={s.page}>
@@ -141,10 +145,11 @@ export default function SettingsPage() {
           <label style={s.label}>Current Plan</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '6px' }}>
             <span style={{ fontSize: '15px', color: '#F1F5F9', fontWeight: 600 }}>{planLabel}</span>
-            {status === 'active' && <span style={s.activeBadge}>Active</span>}
-            {status === 'trialing' && <span style={s.activeBadge}>Trial</span>}
-            {status === 'past_due' && <span style={s.pastDueBadge}>Payment Issue</span>}
-            {status === 'free' && <span style={s.currentBadge}>Free</span>}
+            {isOwner && <span style={{ ...s.activeBadge, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', color: '#38BDF8' }}>Owner</span>}
+            {!isOwner && status === 'active' && <span style={s.activeBadge}>Active</span>}
+            {!isOwner && status === 'trialing' && <span style={s.activeBadge}>Trial</span>}
+            {!isOwner && status === 'past_due' && <span style={s.pastDueBadge}>Payment Issue</span>}
+            {!isOwner && status === 'free' && <span style={s.currentBadge}>Free</span>}
           </div>
         </div>
 
@@ -154,30 +159,49 @@ export default function SettingsPage() {
 
           {isPaid ? (
             <>
-              <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
-                You&apos;re on the <strong style={{ color: '#F1F5F9' }}>Pro Plan</strong>. Enjoy unlimited courses and full AI features.
-              </p>
-              <div style={s.planCard(true)}>
-                <div>
-                  <div style={s.planName}>Pro ✨</div>
-                  <div style={s.planDesc}>Unlimited courses · Full AI engine · Progress analytics · Priority support</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={s.planPrice}>$19/mo</span>
-                  <span style={s.activeBadge}>{status === 'trialing' ? 'Trial' : 'Active'}</span>
-                </div>
-              </div>
-              {status === 'past_due' && (
-                <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: '#F87171' }}>
-                  ⚠️ Your last payment failed. Please update your payment method to keep access.
-                </div>
+              {isOwner ? (
+                <>
+                  <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
+                    You&apos;re the <strong style={{ color: '#F1F5F9' }}>Platform Owner</strong>. Full unlimited access to everything.
+                  </p>
+                  <div style={s.planCard(true)}>
+                    <div>
+                      <div style={s.planName}>Owner</div>
+                      <div style={s.planDesc}>Unlimited courses · Unlimited lessons · Full AI engine · All features · Admin access</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ ...s.activeBadge, background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', color: '#38BDF8' }}>Owner</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
+                    You&apos;re on the <strong style={{ color: '#F1F5F9' }}>Pro Plan</strong>. Enjoy unlimited courses and full AI features.
+                  </p>
+                  <div style={s.planCard(true)}>
+                    <div>
+                      <div style={s.planName}>Pro</div>
+                      <div style={s.planDesc}>Unlimited courses · Full AI engine · Progress analytics · Priority support</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={s.planPrice}>$19/mo</span>
+                      <span style={s.activeBadge}>{status === 'trialing' ? 'Trial' : 'Active'}</span>
+                    </div>
+                  </div>
+                  {status === 'past_due' && (
+                    <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '10px', padding: '14px 18px', marginBottom: '16px', fontSize: '13px', color: '#F87171' }}>
+                      Your last payment failed. Please update your payment method to keep access.
+                    </div>
+                  )}
+                  <button onClick={handleManageBilling} disabled={loading} style={s.manageBtn}>
+                    {loading ? '...' : 'Manage Billing →'}
+                  </button>
+                  <p style={{ color: '#475569', fontSize: '12px', marginTop: '12px' }}>
+                    Cancel, upgrade, or update your payment method via the billing portal.
+                  </p>
+                </>
               )}
-              <button onClick={handleManageBilling} disabled={loading} style={s.manageBtn}>
-                {loading ? '...' : 'Manage Billing →'}
-              </button>
-              <p style={{ color: '#475569', fontSize: '12px', marginTop: '12px' }}>
-                Cancel, upgrade, or update your payment method via the billing portal.
-              </p>
             </>
           ) : (
             <>
