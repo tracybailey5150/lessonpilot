@@ -55,7 +55,7 @@ export default function SignupPage() {
         body: JSON.stringify({ supabaseAuthId: data.user.id, email, fullName }),
       })
       setSuccess(true)
-      setTimeout(() => router.push('/dashboard'), 2000)
+      setLoading(false)
     }
   }
 
@@ -95,9 +95,14 @@ export default function SignupPage() {
         <div style={s.subtitle}>Create your free account</div>
 
         {error && <div style={s.error}>{error}</div>}
-        {success && <div style={s.success}>Account created! Redirecting to dashboard...</div>}
+        {success && (
+          <div style={s.success}>
+            <div style={{ fontSize: '18px', marginBottom: '8px' }}>📧 Check your email!</div>
+            <div>We sent a verification link to <strong>{email}</strong>. Click the link to activate your account, then come back and sign in.</div>
+          </div>
+        )}
 
-        <form onSubmit={handleSignup}>
+        {!success && <form onSubmit={handleSignup}>
           <label style={s.label}>Full Name</label>
           <input
             type="text"
@@ -130,11 +135,14 @@ export default function SignupPage() {
           <button type="submit" disabled={loading || !captchaToken} style={s.btn}>
             {loading ? 'Creating account...' : 'Start Learning Free →'}
           </button>
-        </form>
+        </form>}
 
         <div style={s.footer}>
-          Already have an account?{' '}
-          <Link href="/login" style={s.link}>Sign in</Link>
+          {success ? (
+            <Link href="/login" style={s.link}>← Go to Sign In</Link>
+          ) : (
+            <>Already have an account?{' '}<Link href="/login" style={s.link}>Sign in</Link></>
+          )}
         </div>
       </div>
     </div>
